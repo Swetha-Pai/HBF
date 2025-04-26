@@ -1,4 +1,4 @@
-name: Custom.Linux.Search.FileFinder
+  name: Custom.Linux.Search.FileFinder
 description: |
   Find executable files on the filesystem using the filename or content.
 
@@ -60,45 +60,10 @@ parameters:
 
 sources:
 - query: |
-    LET LocalDeviceMajor <= (
-       253,
-       7,   -- loop
-       8,   -- sd
-       9,   -- md
-       11,  -- sr
-       65,  -- sd
-       66,  -- sd
-       67,  -- sd
-       68,  -- sd
-       69,  -- sd
-       70,  -- sd
-       71,  -- sd
-       128, -- sd
-       129, -- sd
-       130, -- sd
-       131, -- sd
-       132, -- sd
-       133, -- sd
-       134, -- sd
-       135, -- sd
-       202, -- xvd
-       253, -- device-mapper
-       254, -- mdp
-       259, -- blkext
-    )
-
-    LET RecursionCallback = if(
-       condition=LocalFilesystemOnly,
-         then=if(condition=ExcludePathRegex,
-                 then="x=>x.Data.DevMajor IN LocalDeviceMajor AND NOT x.OSPath =~ ExcludePathRegex",
-                 else="x=>x.Data.DevMajor IN LocalDeviceMajor"),
-         else=if(condition=ExcludePathRegex,
-                 then="x=>NOT x.OSPath =~ ExcludePathRegex",
-                 else=""))
-
     LET file_search = SELECT OSPath,
                Sys.mft as Inode,
                Mode,
+               Perms,  -- Permissions string, e.g. rwxr-xr-x
                Size,
                Mtime AS MTime,
                Atime AS ATime,
@@ -106,33 +71,24 @@ sources:
                IsDir,
                Data
         FROM glob(globs=SearchFilesGlobTable.Glob + SearchFilesGlob,
-                  recursion_callback=RecursionCallback,
                   one_filesystem=OneFilesystem,
                   accessor="file", nosymlink=DoNotFollowSymlinks)
 
     LET more_recent = SELECT * FROM if(
         condition=MoreRecentThan,
-        then={
-          SELECT * FROM file_search
-          WHERE MTime > MoreRecentThan
-        }, else={
-          SELECT * FROM file_search
-        })
+        then={ SELECT * FROM file_search WHERE MTime > MoreRecentThan },
+        else={ SELECT * FROM file_search }
+    )
 
     LET modified_before = SELECT * FROM if(
         condition=ModifiedBefore,
-        then={
-          SELECT * FROM more_recent
-          WHERE MTime < ModifiedBefore
-            AND MTime > MoreRecentThan
-        }, else={
-          SELECT * FROM more_recent
-        })
+        then={ SELECT * FROM more_recent WHERE MTime < ModifiedBefore AND MTime > MoreRecentThan },
+        else={ SELECT * FROM more_recent }
+    )
 
-    -- Only regular files with any execute bit set (u/g/o)
-    -- 61440 = 0o170000 (file type mask), 32768 = 0o100000 (regular file), 73 = 0o111 (any execute bit)
+    -- Only regular files with any execute bit in the perms string
     LET executables_only = SELECT * FROM modified_before
-      WHERE (Mode&61440)=32768 AND (Mode&73)!=0
+      WHERE NOT IsDir AND Perms =~ "x"
 
     LET keyword_search = SELECT * FROM if(
         condition=YaraRule,
@@ -141,14 +97,14 @@ sources:
             row={ SELECT * FROM executables_only },
             query={
                SELECT OSPath, Inode, Mode, Size, ATime, MTime, CTime,
-                      str(str=String.Data) As Keywords
+                      str(str=String.Data) AS Keywords
                FROM yara(files=OSPath, key="A", rules=YaraRule, accessor="file")
             })
         }, else={
           SELECT *, NULL AS Keywords FROM executables_only
         })
 
-    SELECT OSPath, Inode, Mode, Size, ATime, MTime, CTime, Keywords,
+    SELECT OSPath, Inode, Mode, Perms, Size, ATime, MTime, CTime, Keywords,
            if(condition=Upload_File, then=upload(file=OSPath)) AS Upload,
            if(condition=Calculate_Hash, then=hash(path=OSPath)) AS Hash
     FROM keyword_search
