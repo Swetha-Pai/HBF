@@ -1,77 +1,36 @@
-name: Linux.Detection.MultiTypeMalwareHunt
-type: CLIENT
+name: Custom.Detection.CommandLineDownloads
 description: |
-  Hunt for potential Linux malware files:
-   - ELF binaries and shared objects (.elf, .bin, .so, .ko)
-   - Scripts (.sh, .py, .pl)
-   - Web shells (.php, .jsp)
-   - Java archives (.jar)
-   - Any executable dropped into /tmp, /var/tmp, /home or /var/www not owned by root
-precondition: |
-  SELECT OS FROM info() WHERE OS = 'Linux'
+  Detects wget/curl downloads with or without explicit output flags,
+  including indirect file operations.
+
+parameters:
+  - name: HistoryPaths
+    default: |
+      /home/*/.*_history
+      /root/.*_history
+      C:\\Users\\*\\AppData\\Roaming\\Microsoft\\Windows\\PowerShell\\*\\History*
+
 sources:
-  - name: MultiTypeMalwareHunt
-    queries:
-      - |
-        LET search_paths = array(
-          a="/usr/bin", b="/usr/local/bin", c="/bin", d="/sbin", e="/lib", f="/lib64",
-          g="/tmp", h="/var/tmp", i="/home", j="/var/www"
-        )
+  - query: |
+      LET history_files = SELECT OSPath, Mtime, Username
+        FROM glob(globs=split(string=HistoryPaths, sep="\n"))
+        WHERE Size > 0
 
-        LET elf_pats    = array(a="*.elf", b="*.bin", c="*.so", d="*.ko")
-        LET script_pats = array(a="*.sh",  b="*.py",  c="*.pl")
-        LET web_pats    = array(a="*.php", b="*.jsp")
-        LET jar_pats    = array(a="*.jar")
-
-        LET elf_globs = foreach(row=search_paths, 
-          query={ SELECT row + "/**/" + pat AS glob FROM foreach(row=elf_pats, query={ SELECT row AS pat FROM scope() }) }
-        ).glob
-
-        LET script_globs = foreach(row=search_paths, 
-          query={ SELECT row + "/**/" + pat AS glob FROM foreach(row=script_pats, query={ SELECT row AS pat FROM scope() }) }
-        ).glob
-
-        LET web_globs = foreach(row=search_paths, 
-          query={ SELECT row + "/**/" + pat AS glob FROM foreach(row=web_pats, query={ SELECT row AS pat FROM scope() }) }
-        ).glob
-
-        LET jar_globs = foreach(row=search_paths, 
-          query={ SELECT row + "/**/" + pat AS glob FROM foreach(row=jar_pats, query={ SELECT row AS pat FROM scope() }) }
-        ).glob
-
-        LET drop_dirs = array(a="/tmp", b="/var/tmp", c="/home", d="/var/www")
-        LET exec_globs = foreach(row=drop_dirs, query={ SELECT row + "/**/*" AS glob FROM scope() }).glob
-
-        LET known_files = SELECT
-            FullPath              AS Path,
-            OSPath.Basename()     AS Name,
-            OSPath.Extension()    AS Ext,
-            stat.mode_string      AS Perms,
-            stat.uid              AS UID,
-            stat.mtime            AS MTime,
-            "known_extension"     AS Reason
-          FROM glob(
-            globs         = elf_globs + script_globs + web_globs + jar_globs,
-            nosymlink     = true,
-            exclude_dirs  = array(a="/proc", b="/sys", c="/dev")
-          )
-
-        LET dropped_exes = SELECT
-            FullPath              AS Path,
-            OSPath.Basename()     AS Name,
-            OSPath.Extension()    AS Ext,
-            stat.mode_string      AS Perms,
-            stat.uid              AS UID,
-            stat.mtime            AS MTime,
-            "dropped_executable"  AS Reason
-          FROM glob(
-            globs         = exec_globs,
-            nosymlink     = true,
-            exclude_dirs  = array(a="/proc", b="/sys", c="/dev")
-          )
-          WHERE stat.mode_string =~ "x"
-            AND stat.uid != 0
-
-        SELECT * FROM known_files
-        UNION
-        SELECT * FROM dropped_exes
+      SELECT * FROM foreach(
+        row=history_files,
+        query={
+          SELECT OSPath,
+            Mtime,
+            Username,
+            Line AS FullCommand,
+            if(
+              condition=Line =~ "(wget|curl)\\s+.*https?://",
+              then=regex_replace(
+                source=Line,
+                re=".*(wget|curl)\\b.*",
+                replace="$1"
+              )
+            ) AS DownloadTool
+          FROM parse_lines(filename=OSPath, accessor="auto")
+          WHERE DownloadTool
+        })
