@@ -1,77 +1,201 @@
-name: Linux.Detection.MultiTypeMalwareHunt
-type: CLIENT
+name: Custom.Linux.Search.FileFinder
 description: |
-  Hunt for potential Linux malware files:
-   - ELF binaries and shared objects (.elf, .bin, .so, .ko)
-   - Scripts (.sh, .py, .pl)
-   - Web shells (.php, .jsp)
-   - Java archives (.jar)
-   - Any executable dropped into /tmp, /var/tmp, /home or /var/www not owned by root
-precondition: |
-  SELECT OS FROM info() WHERE OS = 'Linux'
+  Find files on the filesystem using the filename or content.
+
+
+  ## Performance Note
+
+  This artifact can be quite expensive, especially if we search file
+  content. It will require opening each file and reading its entire
+  content. To minimize the impact on the endpoint we recommend this
+  artifact is collected with a rate limited way (about 20-50 ops per
+  second).
+
+  This artifact is useful in the following scenarios:
+
+    * We need to locate all the places on our network where customer
+      data has been copied.
+
+    * We’ve identified malware in a data breach, named using short
+      random strings in specific folders and need to search for other
+      instances across the network.
+
+    * We believe our user account credentials have been dumped and
+      need to locate them.
+
+    * We need to search for exposed credit card data to satisfy PCI
+      requirements.
+
+    * We have a sample of data that has been disclosed and need to
+      locate other similar files
+
+
+precondition:
+  SELECT * FROM info() where OS = 'linux'
+
+parameters:
+  - name: SearchFilesGlob
+    default: /home/*
+    description: Use a glob to define the files that will be searched.
+
+  - name: SearchFilesGlobTable
+    type: csv
+    default: |
+      Glob
+      /home/someuser/*
+    description: Alternative specify multiple globs in a table
+
+  - name: YaraRule
+    type: yara
+    default:
+    description: A yara rule to search for matching files.
+
+  - name: Upload_File
+    default: N
+    type: bool
+
+  - name: Calculate_Hash
+    default: N
+    type: bool
+
+  - name: MoreRecentThan
+    default: ""
+    type: timestamp
+
+  - name: ModifiedBefore
+    default: ""
+    type: timestamp
+
+  - name: ExcludePathRegex
+    default: "^/(proc|sys|run|snap)"
+    type: regex
+    description: If this regex matches the path of any directory we do not even descend inside of it.
+
+  - name: LocalFilesystemOnly
+    default: Y
+    type: bool
+    description: When set we stay on local attached filesystems including loop, attached disk, cdrom, device mapper, and excluding proc, nfs etc.
+
+  - name: OneFilesystem
+    default: N
+    type: bool
+    description: When set we do not follow a link to go on to a different filesystem.
+
+  - name: DoNotFollowSymlinks
+    type: bool
+    default: N
+    description: If specified we are allowed to follow symlinks while globbing
+
 sources:
-  - name: MultiTypeMalwareHunt
-    queries:
-      - |
-        LET search_paths = array(
-          a="/usr/bin", b="/usr/local/bin", c="/bin", d="/sbin", e="/lib", f="/lib64",
-          g="/tmp", h="/var/tmp", i="/home", j="/var/www"
-        )
+- query: |
+    -- This list comes from cat /proc/devices and represents actual
+    -- devices. Most virtual devices like /proc, fuse and network
+    -- filesystems have a major number of 0.
+    LET LocalDeviceMajor <= (
+       253,
+       7,   -- loop
+       8,   -- sd
+       9,   -- md
+       11,  -- sr
+       65,  -- sd
+       66,  -- sd
+       67,  -- sd
+       68,  -- sd
+       69,  -- sd
+       70,  -- sd
+       71,  -- sd
+       128, -- sd
+       129, -- sd
+       130, -- sd
+       131, -- sd
+       132, -- sd
+       133, -- sd
+       134, -- sd
+       135, -- sd
+       202, -- xvd
+       253, -- device-mapper
+       254, -- mdp
+       259, -- blkext
+    )
 
-        LET elf_pats    = array(a="*.elf", b="*.bin", c="*.so", d="*.ko")
-        LET script_pats = array(a="*.sh",  b="*.py",  c="*.pl")
-        LET web_pats    = array(a="*.php", b="*.jsp")
-        LET jar_pats    = array(a="*.jar")
+    LET RecursionCallback = if(
+       condition=LocalFilesystemOnly,
+         then=if(condition=ExcludePathRegex,
+                 then="x=>x.Data.DevMajor IN LocalDeviceMajor AND NOT x.OSPath =~ ExcludePathRegex",
+                 else="x=>x.Data.DevMajor IN LocalDeviceMajor"),
+         else=if(condition=ExcludePathRegex,
+                 then="x=>NOT x.OSPath =~ ExcludePathRegex",
+                 else=""))
 
-        LET elf_globs = foreach(row=search_paths, 
-          query={ SELECT row + "/**/" + pat AS glob FROM foreach(row=elf_pats, query={ SELECT row AS pat FROM scope() }) }
-        ).glob
+    LET file_search = SELECT OSPath,
+               Sys.mft as Inode,
+               Mode.String AS Mode, Size,
+               Mtime AS MTime,
+               Atime AS ATime,
+               Ctime AS CTime,
+               IsDir, Mode, Data
+        FROM glob(globs=SearchFilesGlobTable.Glob + SearchFilesGlob,
+                  recursion_callback=RecursionCallback,
+                  one_filesystem=OneFilesystem,
+                  accessor="file", nosymlink=DoNotFollowSymlinks)
 
-        LET script_globs = foreach(row=search_paths, 
-          query={ SELECT row + "/**/" + pat AS glob FROM foreach(row=script_pats, query={ SELECT row AS pat FROM scope() }) }
-        ).glob
+    LET more_recent = SELECT * FROM if(
+        condition=MoreRecentThan,
+        then={
+          SELECT * FROM file_search
+          WHERE MTime > MoreRecentThan
+        }, else={
+          SELECT * FROM file_search
+        })
 
-        LET web_globs = foreach(row=search_paths, 
-          query={ SELECT row + "/**/" + pat AS glob FROM foreach(row=web_pats, query={ SELECT row AS pat FROM scope() }) }
-        ).glob
+    LET modified_before = SELECT * FROM if(
+        condition=ModifiedBefore,
+        then={
+          SELECT * FROM more_recent
+          WHERE MTime < ModifiedBefore
+            AND MTime > MoreRecentThan
+        }, else={
+          SELECT * FROM more_recent
+        })
 
-        LET jar_globs = foreach(row=search_paths, 
-          query={ SELECT row + "/**/" + pat AS glob FROM foreach(row=jar_pats, query={ SELECT row AS pat FROM scope() }) }
-        ).glob
+    LET keyword_search = SELECT * FROM if(
+        condition=YaraRule,
+        then={
+          SELECT * FROM foreach(
+            row={
+               SELECT * FROM modified_before
+               WHERE Mode.IsRegular
+            },
+            query={
+               SELECT OSPath, Inode, Mode,
+                      Size, ATime, MTime, CTime,
+                      str(str=String.Data) As Keywords
 
-        LET drop_dirs = array(a="/tmp", b="/var/tmp", c="/home", d="/var/www")
-        LET exec_globs = foreach(row=drop_dirs, query={ SELECT row + "/**/*" AS glob FROM scope() }).glob
+               FROM yara(files=OSPath,
+                         key="A",
+                         rules=YaraRule,
+                         accessor="file")
+            })
+        }, else={
+          SELECT *, NULL AS Keywords FROM modified_before
+        })
 
-        LET known_files = SELECT
-            FullPath              AS Path,
-            OSPath.Basename()     AS Name,
-            OSPath.Extension()    AS Ext,
-            stat.mode_string      AS Perms,
-            stat.uid              AS UID,
-            stat.mtime            AS MTime,
-            "known_extension"     AS Reason
-          FROM glob(
-            globs         = elf_globs + script_globs + web_globs + jar_globs,
-            nosymlink     = true,
-            exclude_dirs  = array(a="/proc", b="/sys", c="/dev")
-          )
+    SELECT OSPath, Inode, Mode, Size, ATime,
+             MTime, CTime, Keywords,
+               if(condition=Upload_File and Mode.IsRegular,
+                  then=upload(file=OSPath,
+                              accessor="file")) AS Upload,
+               if(condition=Calculate_Hash and Mode.IsRegular,
+                  then=hash(path=OSPath,
+                            accessor="file")) AS Hash
+    FROM keyword_search
 
-        LET dropped_exes = SELECT
-            FullPath              AS Path,
-            OSPath.Basename()     AS Name,
-            OSPath.Extension()    AS Ext,
-            stat.mode_string      AS Perms,
-            stat.uid              AS UID,
-            stat.mtime            AS MTime,
-            "dropped_executable"  AS Reason
-          FROM glob(
-            globs         = exec_globs,
-            nosymlink     = true,
-            exclude_dirs  = array(a="/proc", b="/sys", c="/dev")
-          )
-          WHERE stat.mode_string =~ "x"
-            AND stat.uid != 0
-
-        SELECT * FROM known_files
-        UNION
-        SELECT * FROM dropped_exes
+column_types:
+  - name: ATime
+    type: timestamp
+  - name: MTime
+    type: timestamp
+  - name: CTime
+    type: timestamp
+  - name: Upload
+    type: preview_upload
