@@ -1,29 +1,31 @@
 name: Find.NonStandard.Extensions
 description: |
    This artifact detects files on the system that do not have standard extensions, allowing you to find suspicious or unknown file types that might be present.
-   It scans the file system for files with extensions other than commonly seen file types (e.g., .txt, .jpg, .exe, etc.).
+   It scans the filesystem for files with extensions other than commonly seen file types (e.g., .txt, .jpg, .exe, etc.).
 
 type: CLIENT
+
+parameters:
+  - name: SearchGlob
+    type: string
+    default: "/**"
+    description: Glob pattern to search files recursively
 
 sources:
   - precondition: |
       SELECT OS FROM info() WHERE OS IN ('linux', 'windows', 'darwin')
 
     query: |
-      LET file_search = SELECT OSPath AS FullPath, 
-                             Extension, 
-                             Size, 
-                             MTime,
-                             Mode.IsDir
-                    FROM glob(
-                      globs="/*",  -- You can adjust this path to a specific directory if needed
-                      recursion_callback="x => x",
-                      one_filesystem=true,
-                      accessor="file",
-                      nosymlink=true  -- Prevent following symlinks if desired
-                    )
-      WHERE NOT Mode.IsDir  -- Ensure only files, not directories
+      LET file_search = SELECT OSPath, Extension, Size, MTime
+        FROM glob(
+          globs=SearchGlob,  -- Recursively search the given glob pattern
+          recursion_callback="x => x",  -- Recurse into directories
+          one_filesystem=true,
+          accessor="file",  -- Look at files
+          nosymlink=true  -- Prevent following symlinks
+        )
+      WHERE NOT Mode.IsDir  -- Only select files, not directories
         AND NOT Extension IN (
           'txt', 'jpg', 'jpeg', 'png', 'pdf', 'docx', 'xlsx', 'csv', 'html', 'zip', 'tar', 'gz', 'mp4', 'mp3', 'exe', 'dll', 'bat', 'sh', 'py'
         )
-      SELECT FullPath, Extension, Size, MTime FROM file_search
+      SELECT OSPath AS FullPath, Extension, Size, MTime FROM file_search
