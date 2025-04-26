@@ -1,6 +1,6 @@
 name: Custom.Linux.Search.FileFinder
 description: |
-  Find .sh, .py, and binary files (ELF) on Linux systems.
+  Find .sh, .py, .jar files and binary executables on Linux systems.
 
 precondition:
   SELECT * FROM info() where OS = 'linux'
@@ -39,10 +39,17 @@ sources:
     LET static_globs = (
       "/home/**/*.sh",
       "/home/**/*.py",
-      "/home/**/*", 
+      "/home/**/*.jar",
       "/usr/local/bin/*",
+      "/usr/local/sbin/*",
       "/usr/bin/*",
-      "/opt/**/*"
+      "/usr/sbin/*",
+      "/sbin/*",
+      "/bin/*",
+      "/opt/**/*.sh",
+      "/opt/**/*.py",
+      "/opt/**/*.jar",
+      "/opt/**"
     )
 
     LET file_search = SELECT 
@@ -64,8 +71,8 @@ sources:
         nosymlink=false
     )
     WHERE (
-        OSPath =~ '.*\.(sh|py)$' OR
-        (Mode.IsRegular AND Size > 0 AND Data[0:4] == b"\x7fELF")
+        OSPath =~ '.*\.(sh|py|jar)$'
+        OR (Mode.IsRegular AND Mode.Execute)
     )
 
     LET more_recent = SELECT * FROM if(
