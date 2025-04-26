@@ -18,36 +18,34 @@ sources:
         FROM glob(globs=split(string=HistoryPaths, sep="\n"))
         WHERE Size > 0
 
-      SELECT * FROM foreach(
+      SELECT 
+        history_files.OSPath AS CurrentFilePath,
+        history_files.Mtime,
+        history_files.Username,
+        line AS FullCommand,
+        if(
+          condition=line =~ "(wget|curl)\\s+.*https?://",
+          then=regex_replace(
+            source=line,
+            re=".*(wget|curl)\\b.*",
+            replace="$1"
+          )
+        ) AS DownloadTool,
+        regex_search(source=line, regex="(https?://\\S+)", group=0) AS DownloadURL,
+        if(
+          condition=regex_search(source=line, regex="(https?://\\S+)", group=0),
+          then=basename(regex_search(source=line, regex="(https?://\\S+)", group=0)),
+          else=null()
+        ) AS DownloadedFilename
+      FROM foreach(
         row=history_files,
         query={
-          LET download_url = regex_search(
-            source=row.Line,
-            regex="(https?://\\S+)",
-            group=0
-          )
-          LET downloaded_filename = if(
-            condition=download_url,
-            then=basename(download_url),
-            else=null()
-          )
-          
           SELECT
-            row.OSPath AS CurrentFilePath,
+            row.OSPath,
             row.Mtime,
             row.Username,
-            row.Line AS FullCommand,
-            if(
-              condition=row.Line =~ "(wget|curl)\\s+.*https?://",
-              then=regex_replace(
-                source=row.Line,
-                re=".*(wget|curl)\\b.*",
-                replace="$1"
-              )
-            ) AS DownloadTool,
-            download_url AS DownloadURL,
-            downloaded_filename AS DownloadedFilename
+            row.Line
           FROM parse_lines(filename=row.OSPath, accessor="auto")
-          WHERE DownloadTool
+          WHERE row.Line =~ "(wget|curl)\\s+.*https?://"
         }
       )
