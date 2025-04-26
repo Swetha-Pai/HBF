@@ -131,29 +131,90 @@ sources:
     WHERE NOT IsDir AND Mode.Permissions.Executable AND Mode.Permissions.OtherWrite
     
     -- Find suspicious file types
-    LET suspicious_files = SELECT 
-        OSPath,
-        Sys.mft as Inode,
-        Mode.String AS Mode, 
-        Size,
-        Mtime AS MTime,
-        Atime AS ATime,
-        Ctime AS CTime,
-        IsDir, 
-        Mode, 
-        Data,
-        CASE 
-          WHEN OSPath =~ '.*\\.sh$' THEN "Shell script"
-          WHEN OSPath =~ '.*\\.py$' THEN "Python script"
-          WHEN OSPath =~ '.*\\.pl$' THEN "Perl script"
-          WHEN OSPath =~ '.*\\.(php|jsp|asp|aspx|cgi)$' THEN "Web shell"
-          WHEN OSPath =~ '.*\\.jar$' THEN "Java JAR"
-          WHEN OSPath =~ '.*\\.ko$' THEN "Kernel module"
-          WHEN OSPath =~ '^/(tmp|var/tmp|dev/shm)/' THEN "Dropper location"
-          ELSE "Other suspicious"
-        END AS FileType
+    LET shell_scripts = SELECT 
+        OSPath, Sys.mft as Inode, Mode.String AS Mode, Size,
+        Mtime AS MTime, Atime AS ATime, Ctime AS CTime,
+        IsDir, Mode, Data, "Shell script" AS FileType
     FROM glob(
-        globs=all_globs,
+        globs=script_globs,
+        recursion_callback=RecursionCallback,
+        one_filesystem=false,
+        accessor="file", 
+        nosymlink=false
+    )
+    WHERE OSPath =~ '.*\\.sh$' AND NOT IsDir
+    
+    LET python_scripts = SELECT 
+        OSPath, Sys.mft as Inode, Mode.String AS Mode, Size,
+        Mtime AS MTime, Atime AS ATime, Ctime AS CTime,
+        IsDir, Mode, Data, "Python script" AS FileType
+    FROM glob(
+        globs=script_globs,
+        recursion_callback=RecursionCallback,
+        one_filesystem=false,
+        accessor="file", 
+        nosymlink=false
+    )
+    WHERE OSPath =~ '.*\\.py$' AND NOT IsDir
+    
+    LET perl_scripts = SELECT 
+        OSPath, Sys.mft as Inode, Mode.String AS Mode, Size,
+        Mtime AS MTime, Atime AS ATime, Ctime AS CTime,
+        IsDir, Mode, Data, "Perl script" AS FileType
+    FROM glob(
+        globs=script_globs,
+        recursion_callback=RecursionCallback,
+        one_filesystem=false,
+        accessor="file", 
+        nosymlink=false
+    )
+    WHERE OSPath =~ '.*\\.pl$' AND NOT IsDir
+    
+    LET web_shells = SELECT 
+        OSPath, Sys.mft as Inode, Mode.String AS Mode, Size,
+        Mtime AS MTime, Atime AS ATime, Ctime AS CTime,
+        IsDir, Mode, Data, "Web shell" AS FileType
+    FROM glob(
+        globs=webshell_globs,
+        recursion_callback=RecursionCallback,
+        one_filesystem=false,
+        accessor="file", 
+        nosymlink=false
+    )
+    WHERE OSPath =~ '.*\\.(php|jsp|asp|aspx|cgi)$' AND NOT IsDir
+    
+    LET jar_files = SELECT 
+        OSPath, Sys.mft as Inode, Mode.String AS Mode, Size,
+        Mtime AS MTime, Atime AS ATime, Ctime AS CTime,
+        IsDir, Mode, Data, "Java JAR" AS FileType
+    FROM glob(
+        globs=jar_globs,
+        recursion_callback=RecursionCallback,
+        one_filesystem=false,
+        accessor="file", 
+        nosymlink=false
+    )
+    WHERE OSPath =~ '.*\\.jar$' AND NOT IsDir
+    
+    LET kernel_modules = SELECT 
+        OSPath, Sys.mft as Inode, Mode.String AS Mode, Size,
+        Mtime AS MTime, Atime AS ATime, Ctime AS CTime,
+        IsDir, Mode, Data, "Kernel module" AS FileType
+    FROM glob(
+        globs=kernel_module_globs,
+        recursion_callback=RecursionCallback,
+        one_filesystem=false,
+        accessor="file", 
+        nosymlink=false
+    )
+    WHERE OSPath =~ '.*\\.ko$' AND NOT IsDir
+    
+    LET dropper_files = SELECT 
+        OSPath, Sys.mft as Inode, Mode.String AS Mode, Size,
+        Mtime AS MTime, Atime AS ATime, Ctime AS CTime,
+        IsDir, Mode, Data, "Dropper location file" AS FileType
+    FROM glob(
+        globs=dropper_location_globs,
         recursion_callback=RecursionCallback,
         one_filesystem=false,
         accessor="file", 
@@ -192,7 +253,13 @@ sources:
           read_file(filename=OSPath, length=4, offset=0) =~ '^\\x7fELF'
     
     -- Combine all results
-    LET combined_results = SELECT * FROM suspicious_files
+    LET combined_results = SELECT * FROM shell_scripts
+    UNION SELECT * FROM python_scripts
+    UNION SELECT * FROM perl_scripts
+    UNION SELECT * FROM web_shells
+    UNION SELECT * FROM jar_files
+    UNION SELECT * FROM kernel_modules
+    UNION SELECT * FROM dropper_files
     UNION SELECT * FROM executable_files
     UNION SELECT * FROM elf_files
     
