@@ -1,13 +1,6 @@
-name: Custom.Linux.MaliciousFileFinder
+name: Custom.Linux.Search.FileFinder
 description: |
-  Find potentially malicious files on Linux systems including:
-  - ELF binaries (native executables)
-  - Shell/Python/Perl scripts
-  - Java JAR files
-  - Malicious web shells (.php, .jsp, etc.)
-  - Kernel modules (.ko)
-  - Suspicious files in common dropper locations
-  - Files with executable permissions in user-writable directories
+  Find .sh, .py, and binary files (ELF) on Linux systems.
 
 precondition:
   SELECT * FROM info() where OS = 'linux'
@@ -43,526 +36,61 @@ sources:
         then="x=>x.Data.DevMajor IN LocalDeviceMajor AND NOT x.OSPath =~ ExcludePathRegex",
         else="x=>x.Data.DevMajor IN LocalDeviceMajor")
 
-    -- Find shell scripts
-    LET shell_scripts = SELECT 
-        OSPath, 
-        Sys.mft as Inode, 
+    LET static_globs = (
+      "/home/**/*.sh",
+      "/home/**/*.py",
+      "/home/**/*", 
+      "/usr/local/bin/*",
+      "/usr/bin/*",
+      "/opt/**/*"
+    )
+
+    LET file_search = SELECT 
+        OSPath,
+        Sys.mft as Inode,
         Mode.String AS Mode, 
         Size,
-        Mtime AS MTime, 
-        Atime AS ATime, 
+        Mtime AS MTime,
+        Atime AS ATime,
         Ctime AS CTime,
-        "Shell script" AS FileType
+        IsDir, 
+        Mode, 
+        Data
     FROM glob(
-        globs=(
-          "/home/**/*.sh",
-          "/usr/local/bin/*.sh",
-          "/usr/bin/*.sh",
-          "/opt/**/*.sh"
-        ),
+        globs=static_globs,
         recursion_callback=RecursionCallback,
         one_filesystem=false,
         accessor="file", 
         nosymlink=false
     )
-    WHERE NOT IsDir
-
-    -- Find python scripts
-    LET python_scripts = SELECT 
-        OSPath, 
-        Sys.mft as Inode, 
-        Mode.String AS Mode, 
-        Size,
-        Mtime AS MTime, 
-        Atime AS ATime, 
-        Ctime AS CTime,
-        "Python script" AS FileType
-    FROM glob(
-        globs=(
-          "/home/**/*.py",
-          "/usr/local/bin/*.py",
-          "/usr/bin/*.py",
-          "/opt/**/*.py"
-        ),
-        recursion_callback=RecursionCallback,
-        one_filesystem=false,
-        accessor="file", 
-        nosymlink=false
+    WHERE (
+        OSPath =~ '.*\.(sh|py)$' OR
+        (Mode.IsRegular AND Size > 0 AND Data[0:4] == b"\x7fELF")
     )
-    WHERE NOT IsDir
 
-    -- Find perl scripts
-    LET perl_scripts = SELECT 
+    LET more_recent = SELECT * FROM if(
+        condition=MoreRecentThan,
+        then={ SELECT * FROM file_search WHERE MTime > MoreRecentThan },
+        else=file_search)
+
+    LET modified_before = SELECT * FROM if(
+        condition=ModifiedBefore,
+        then={ SELECT * FROM more_recent WHERE MTime < ModifiedBefore },
+        else=more_recent)
+
+    SELECT 
         OSPath, 
-        Sys.mft as Inode, 
-        Mode.String AS Mode, 
-        Size,
-        Mtime AS MTime, 
-        Atime AS ATime, 
-        Ctime AS CTime,
-        "Perl script" AS FileType
-    FROM glob(
-        globs=(
-          "/home/**/*.pl",
-          "/usr/local/bin/*.pl",
-          "/usr/bin/*.pl",
-          "/opt/**/*.pl"
-        ),
-        recursion_callback=RecursionCallback,
-        one_filesystem=false,
-        accessor="file", 
-        nosymlink=false
-    )
-    WHERE NOT IsDir
-
-    -- Find web shells
-    LET web_shells = SELECT 
-        OSPath, 
-        Sys.mft as Inode, 
-        Mode.String AS Mode, 
-        Size,
-        Mtime AS MTime, 
-        Atime AS ATime, 
-        Ctime AS CTime,
-        "Web shell" AS FileType
-    FROM glob(
-        globs=(
-          "/var/www/**/*.php",
-          "/var/www/**/*.jsp",
-          "/var/www/**/*.asp",
-          "/var/www/**/*.aspx",
-          "/var/www/**/*.cgi",
-          "/usr/share/nginx/**/*.php",
-          "/usr/share/nginx/**/*.jsp",
-          "/usr/share/apache*/**/*.php",
-          "/usr/share/apache*/**/*.jsp"
-        ),
-        recursion_callback=RecursionCallback,
-        one_filesystem=false,
-        accessor="file", 
-        nosymlink=false
-    )
-    WHERE NOT IsDir
-
-    -- Find JAR files
-    LET jar_files = SELECT 
-        OSPath, 
-        Sys.mft as Inode, 
-        Mode.String AS Mode, 
-        Size,
-        Mtime AS MTime, 
-        Atime AS ATime, 
-        Ctime AS CTime,
-        "Java JAR" AS FileType
-    FROM glob(
-        globs=(
-          "/home/**/*.jar",
-          "/opt/**/*.jar",
-          "/usr/local/**/*.jar",
-          "/var/www/**/*.jar"
-        ),
-        recursion_callback=RecursionCallback,
-        one_filesystem=false,
-        accessor="file", 
-        nosymlink=false
-    )
-    WHERE NOT IsDir
-
-    -- Find kernel modules
-    LET kernel_modules = SELECT 
-        OSPath, 
-        Sys.mft as Inode, 
-        Mode.String AS Mode, 
-        Size,
-        Mtime AS MTime, 
-        Atime AS ATime, 
-        Ctime AS CTime,
-        "Kernel module" AS FileType
-    FROM glob(
-        globs=(
-          "/lib/modules/**/*.ko",
-          "/usr/lib/modules/**/*.ko",
-          "/home/**/*.ko"
-        ),
-        recursion_callback=RecursionCallback,
-        one_filesystem=false,
-        accessor="file", 
-        nosymlink=false
-    )
-    WHERE NOT IsDir
-
-    -- Find files in dropper locations
-    LET dropper_files = SELECT 
-        OSPath, 
-        Sys.mft as Inode, 
-        Mode.String AS Mode, 
-        Size,
-        Mtime AS MTime, 
-        Atime AS ATime, 
-        Ctime AS CTime,
-        "Dropper location file" AS FileType
-    FROM glob(
-        globs=(
-          "/tmp/**",
-          "/var/tmp/**",
-          "/dev/shm/**"
-        ),
-        recursion_callback=RecursionCallback,
-        one_filesystem=false,
-        accessor="file", 
-        nosymlink=false
-    )
-    WHERE NOT IsDir
-
-    -- Find executable files in writable dirs
-    LET executable_files = SELECT 
-        OSPath, 
-        Sys.mft as Inode, 
-        Mode.String AS Mode, 
-        Size,
-        Mtime AS MTime, 
-        Atime AS ATime, 
-        Ctime AS CTime,
-        "Executable in writable dir" AS FileType
-    FROM glob(
-        globs=(
-          "/home/**",
-          "/tmp/**",
-          "/var/tmp/**",
-          "/dev/shm/**"
-        ),
-        recursion_callback=RecursionCallback,
-        one_filesystem=false,
-        accessor="file", 
-        nosymlink=false
-    )
-    WHERE NOT IsDir AND Mode.Permissions.Executable AND Mode.Permissions.OtherWrite
-
-    -- Find ELF binaries
-    LET elf_files = SELECT
-        OSPath, 
-        Sys.mft as Inode, 
-        Mode.String AS Mode, 
-        Size,
-        Mtime AS MTime, 
-        Atime AS ATime, 
-        Ctime AS CTime,
-        "ELF binary" AS FileType
-    FROM glob(
-        globs=(
-          "/home/**",
-          "/usr/local/bin/*",
-          "/usr/local/sbin/*",
-          "/tmp/**",
-          "/var/tmp/**",
-          "/dev/shm/**"
-        ),
-        recursion_callback=RecursionCallback,
-        one_filesystem=false,
-        accessor="file", 
-        nosymlink=false
-    )
-    WHERE NOT IsDir AND Mode.Permissions.Executable AND 
-          read_file(filename=OSPath, length=4, offset=0) =~ '^\\x7fELF'
-
-    -- Create separate sources for each file type
-    SELECT * FROM shell_scripts
-    WHERE (MoreRecentThan = "" OR MTime > MoreRecentThan) AND 
-          (ModifiedBefore = "" OR MTime < ModifiedBefore)
-
-- query: |
-    LET LocalDeviceMajor <= (253,7,8,9,11,65,66,67,68,69,70,71,128,129,130,131,132,133,134,135,202,253,254,259)
-
-    LET RecursionCallback = if(
-        condition=ExcludePathRegex,
-        then="x=>x.Data.DevMajor IN LocalDeviceMajor AND NOT x.OSPath =~ ExcludePathRegex",
-        else="x=>x.Data.DevMajor IN LocalDeviceMajor")
-
-    -- Find python scripts
-    LET python_scripts = SELECT 
-        OSPath, 
-        Sys.mft as Inode, 
-        Mode.String AS Mode, 
-        Size,
-        Mtime AS MTime, 
-        Atime AS ATime, 
-        Ctime AS CTime,
-        "Python script" AS FileType
-    FROM glob(
-        globs=(
-          "/home/**/*.py",
-          "/usr/local/bin/*.py",
-          "/usr/bin/*.py",
-          "/opt/**/*.py"
-        ),
-        recursion_callback=RecursionCallback,
-        one_filesystem=false,
-        accessor="file", 
-        nosymlink=false
-    )
-    WHERE NOT IsDir
-
-    SELECT * FROM python_scripts
-    WHERE (MoreRecentThan = "" OR MTime > MoreRecentThan) AND 
-          (ModifiedBefore = "" OR MTime < ModifiedBefore)
-
-- query: |
-    LET LocalDeviceMajor <= (253,7,8,9,11,65,66,67,68,69,70,71,128,129,130,131,132,133,134,135,202,253,254,259)
-
-    LET RecursionCallback = if(
-        condition=ExcludePathRegex,
-        then="x=>x.Data.DevMajor IN LocalDeviceMajor AND NOT x.OSPath =~ ExcludePathRegex",
-        else="x=>x.Data.DevMajor IN LocalDeviceMajor")
-
-    -- Find perl scripts
-    LET perl_scripts = SELECT 
-        OSPath, 
-        Sys.mft as Inode, 
-        Mode.String AS Mode, 
-        Size,
-        Mtime AS MTime, 
-        Atime AS ATime, 
-        Ctime AS CTime,
-        "Perl script" AS FileType
-    FROM glob(
-        globs=(
-          "/home/**/*.pl",
-          "/usr/local/bin/*.pl",
-          "/usr/bin/*.pl",
-          "/opt/**/*.pl"
-        ),
-        recursion_callback=RecursionCallback,
-        one_filesystem=false,
-        accessor="file", 
-        nosymlink=false
-    )
-    WHERE NOT IsDir
-
-    SELECT * FROM perl_scripts
-    WHERE (MoreRecentThan = "" OR MTime > MoreRecentThan) AND 
-          (ModifiedBefore = "" OR MTime < ModifiedBefore)
-
-- query: |
-    LET LocalDeviceMajor <= (253,7,8,9,11,65,66,67,68,69,70,71,128,129,130,131,132,133,134,135,202,253,254,259)
-
-    LET RecursionCallback = if(
-        condition=ExcludePathRegex,
-        then="x=>x.Data.DevMajor IN LocalDeviceMajor AND NOT x.OSPath =~ ExcludePathRegex",
-        else="x=>x.Data.DevMajor IN LocalDeviceMajor")
-
-    -- Find web shells
-    LET web_shells = SELECT 
-        OSPath, 
-        Sys.mft as Inode, 
-        Mode.String AS Mode, 
-        Size,
-        Mtime AS MTime, 
-        Atime AS ATime, 
-        Ctime AS CTime,
-        "Web shell" AS FileType
-    FROM glob(
-        globs=(
-          "/var/www/**/*.php",
-          "/var/www/**/*.jsp",
-          "/var/www/**/*.asp",
-          "/var/www/**/*.aspx",
-          "/var/www/**/*.cgi",
-          "/usr/share/nginx/**/*.php",
-          "/usr/share/nginx/**/*.jsp",
-          "/usr/share/apache*/**/*.php",
-          "/usr/share/apache*/**/*.jsp"
-        ),
-        recursion_callback=RecursionCallback,
-        one_filesystem=false,
-        accessor="file", 
-        nosymlink=false
-    )
-    WHERE NOT IsDir
-
-    SELECT * FROM web_shells
-    WHERE (MoreRecentThan = "" OR MTime > MoreRecentThan) AND 
-          (ModifiedBefore = "" OR MTime < ModifiedBefore)
-
-- query: |
-    LET LocalDeviceMajor <= (253,7,8,9,11,65,66,67,68,69,70,71,128,129,130,131,132,133,134,135,202,253,254,259)
-
-    LET RecursionCallback = if(
-        condition=ExcludePathRegex,
-        then="x=>x.Data.DevMajor IN LocalDeviceMajor AND NOT x.OSPath =~ ExcludePathRegex",
-        else="x=>x.Data.DevMajor IN LocalDeviceMajor")
-
-    -- Find JAR files
-    LET jar_files = SELECT 
-        OSPath, 
-        Sys.mft as Inode, 
-        Mode.String AS Mode, 
-        Size,
-        Mtime AS MTime, 
-        Atime AS ATime, 
-        Ctime AS CTime,
-        "Java JAR" AS FileType
-    FROM glob(
-        globs=(
-          "/home/**/*.jar",
-          "/opt/**/*.jar",
-          "/usr/local/**/*.jar",
-          "/var/www/**/*.jar"
-        ),
-        recursion_callback=RecursionCallback,
-        one_filesystem=false,
-        accessor="file", 
-        nosymlink=false
-    )
-    WHERE NOT IsDir
-
-    SELECT * FROM jar_files
-    WHERE (MoreRecentThan = "" OR MTime > MoreRecentThan) AND 
-          (ModifiedBefore = "" OR MTime < ModifiedBefore)
-
-- query: |
-    LET LocalDeviceMajor <= (253,7,8,9,11,65,66,67,68,69,70,71,128,129,130,131,132,133,134,135,202,253,254,259)
-
-    LET RecursionCallback = if(
-        condition=ExcludePathRegex,
-        then="x=>x.Data.DevMajor IN LocalDeviceMajor AND NOT x.OSPath =~ ExcludePathRegex",
-        else="x=>x.Data.DevMajor IN LocalDeviceMajor")
-
-    -- Find kernel modules
-    LET kernel_modules = SELECT 
-        OSPath, 
-        Sys.mft as Inode, 
-        Mode.String AS Mode, 
-        Size,
-        Mtime AS MTime, 
-        Atime AS ATime, 
-        Ctime AS CTime,
-        "Kernel module" AS FileType
-    FROM glob(
-        globs=(
-          "/lib/modules/**/*.ko",
-          "/usr/lib/modules/**/*.ko",
-          "/home/**/*.ko"
-        ),
-        recursion_callback=RecursionCallback,
-        one_filesystem=false,
-        accessor="file", 
-        nosymlink=false
-    )
-    WHERE NOT IsDir
-
-    SELECT * FROM kernel_modules
-    WHERE (MoreRecentThan = "" OR MTime > MoreRecentThan) AND 
-          (ModifiedBefore = "" OR MTime < ModifiedBefore)
-
-- query: |
-    LET LocalDeviceMajor <= (253,7,8,9,11,65,66,67,68,69,70,71,128,129,130,131,132,133,134,135,202,253,254,259)
-
-    LET RecursionCallback = if(
-        condition=ExcludePathRegex,
-        then="x=>x.Data.DevMajor IN LocalDeviceMajor AND NOT x.OSPath =~ ExcludePathRegex",
-        else="x=>x.Data.DevMajor IN LocalDeviceMajor")
-
-    -- Find files in dropper locations
-    LET dropper_files = SELECT 
-        OSPath, 
-        Sys.mft as Inode, 
-        Mode.String AS Mode, 
-        Size,
-        Mtime AS MTime, 
-        Atime AS ATime, 
-        Ctime AS CTime,
-        "Dropper location file" AS FileType
-    FROM glob(
-        globs=(
-          "/tmp/**",
-          "/var/tmp/**",
-          "/dev/shm/**"
-        ),
-        recursion_callback=RecursionCallback,
-        one_filesystem=false,
-        accessor="file", 
-        nosymlink=false
-    )
-    WHERE NOT IsDir
-
-    SELECT * FROM dropper_files
-    WHERE (MoreRecentThan = "" OR MTime > MoreRecentThan) AND 
-          (ModifiedBefore = "" OR MTime < ModifiedBefore)
-
-- query: |
-    LET LocalDeviceMajor <= (253,7,8,9,11,65,66,67,68,69,70,71,128,129,130,131,132,133,134,135,202,253,254,259)
-
-    LET RecursionCallback = if(
-        condition=ExcludePathRegex,
-        then="x=>x.Data.DevMajor IN LocalDeviceMajor AND NOT x.OSPath =~ ExcludePathRegex",
-        else="x=>x.Data.DevMajor IN LocalDeviceMajor")
-
-    -- Find executable files in writable dirs
-    LET executable_files = SELECT 
-        OSPath, 
-        Sys.mft as Inode, 
-        Mode.String AS Mode, 
-        Size,
-        Mtime AS MTime, 
-        Atime AS ATime, 
-        Ctime AS CTime,
-        "Executable in writable dir" AS FileType
-    FROM glob(
-        globs=(
-          "/home/**",
-          "/tmp/**",
-          "/var/tmp/**",
-          "/dev/shm/**"
-        ),
-        recursion_callback=RecursionCallback,
-        one_filesystem=false,
-        accessor="file", 
-        nosymlink=false
-    )
-    WHERE NOT IsDir AND Mode.Permissions.Executable AND Mode.Permissions.OtherWrite
-
-    SELECT * FROM executable_files
-    WHERE (MoreRecentThan = "" OR MTime > MoreRecentThan) AND 
-          (ModifiedBefore = "" OR MTime < ModifiedBefore)
-
-- query: |
-    LET LocalDeviceMajor <= (253,7,8,9,11,65,66,67,68,69,70,71,128,129,130,131,132,133,134,135,202,253,254,259)
-
-    LET RecursionCallback = if(
-        condition=ExcludePathRegex,
-        then="x=>x.Data.DevMajor IN LocalDeviceMajor AND NOT x.OSPath =~ ExcludePathRegex",
-        else="x=>x.Data.DevMajor IN LocalDeviceMajor")
-
-    -- Find ELF binaries
-    LET elf_files = SELECT
-        OSPath, 
-        Sys.mft as Inode, 
-        Mode.String AS Mode, 
-        Size,
-        Mtime AS MTime, 
-        Atime AS ATime, 
-        Ctime AS CTime,
-        "ELF binary" AS FileType
-    FROM glob(
-        globs=(
-          "/home/**",
-          "/usr/local/bin/*",
-          "/usr/local/sbin/*",
-          "/tmp/**",
-          "/var/tmp/**",
-          "/dev/shm/**"
-        ),
-        recursion_callback=RecursionCallback,
-        one_filesystem=false,
-        accessor="file", 
-        nosymlink=false
-    )
-    WHERE NOT IsDir AND Mode.Permissions.Executable AND 
-          read_file(filename=OSPath, length=4, offset=0) =~ '^\\x7fELF'
-
-    SELECT * FROM elf_files
-    WHERE (MoreRecentThan = "" OR MTime > MoreRecentThan) AND 
-          (ModifiedBefore = "" OR MTime < ModifiedBefore)
+        Inode, 
+        Mode, 
+        Size, 
+        ATime,
+        MTime, 
+        CTime,
+        if(condition=Upload_File and Mode.IsRegular,
+            then=upload(file=OSPath)) AS Upload,
+        if(condition=Calculate_Hash and Mode.IsRegular,
+            then=hash(path=OSPath)) AS Hash
+    FROM modified_before
 
 column_types:
   - name: ATime
@@ -571,3 +99,5 @@ column_types:
     type: timestamp
   - name: CTime
     type: timestamp
+  - name: Upload
+    type: preview_upload
