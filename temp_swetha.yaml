@@ -11,26 +11,36 @@ precondition: |
   SELECT OS FROM info() WHERE OS = 'Linux'
 sources:
   - name: MultiTypeMalwareHunt
-    precondition: ""
     queries:
       - |
-        LET search_paths = [
-          "/usr/bin", "/usr/local/bin", "/bin", "/sbin", "/lib", "/lib64",
-          "/tmp", "/var/tmp", "/home", "/var/www"
-        ]
+        LET search_paths = array(
+          a="/usr/bin", b="/usr/local/bin", c="/bin", d="/sbin", e="/lib", f="/lib64",
+          g="/tmp", h="/var/tmp", i="/home", j="/var/www"
+        )
 
-        LET elf_pats    = ["*.elf", "*.bin", "*.so", "*.ko"]
-        LET script_pats = ["*.sh",  "*.py",  "*.pl"]
-        LET web_pats    = ["*.php", "*.jsp"]
-        LET jar_pats    = ["*.jar"]
+        LET elf_pats    = array(a="*.elf", b="*.bin", c="*.so", d="*.ko")
+        LET script_pats = array(a="*.sh",  b="*.py",  c="*.pl")
+        LET web_pats    = array(a="*.php", b="*.jsp")
+        LET jar_pats    = array(a="*.jar")
 
-        LET elf_globs    = [ p + "/**/" + pat for p in search_paths for pat in elf_pats ]
-        LET script_globs = [ p + "/**/" + pat for p in search_paths for pat in script_pats ]
-        LET web_globs    = [ p + "/**/" + pat for p in search_paths for pat in web_pats ]
-        LET jar_globs    = [ p + "/**/" + pat for p in search_paths for pat in jar_pats ]
+        LET elf_globs = foreach(row=search_paths, 
+          query={ SELECT row + "/**/" + pat AS glob FROM foreach(row=elf_pats, query={ SELECT row AS pat FROM scope() }) }
+        ).glob
 
-        LET drop_dirs = ["/tmp", "/var/tmp", "/home", "/var/www"]
-        LET exec_globs = [ d + "/**/*" for d in drop_dirs ]
+        LET script_globs = foreach(row=search_paths, 
+          query={ SELECT row + "/**/" + pat AS glob FROM foreach(row=script_pats, query={ SELECT row AS pat FROM scope() }) }
+        ).glob
+
+        LET web_globs = foreach(row=search_paths, 
+          query={ SELECT row + "/**/" + pat AS glob FROM foreach(row=web_pats, query={ SELECT row AS pat FROM scope() }) }
+        ).glob
+
+        LET jar_globs = foreach(row=search_paths, 
+          query={ SELECT row + "/**/" + pat AS glob FROM foreach(row=jar_pats, query={ SELECT row AS pat FROM scope() }) }
+        ).glob
+
+        LET drop_dirs = array(a="/tmp", b="/var/tmp", c="/home", d="/var/www")
+        LET exec_globs = foreach(row=drop_dirs, query={ SELECT row + "/**/*" AS glob FROM scope() }).glob
 
         LET known_files = SELECT
             FullPath              AS Path,
@@ -43,7 +53,7 @@ sources:
           FROM glob(
             globs         = elf_globs + script_globs + web_globs + jar_globs,
             nosymlink     = true,
-            exclude_dirs  = ["/proc","/sys","/dev"]
+            exclude_dirs  = array(a="/proc", b="/sys", c="/dev")
           )
 
         LET dropped_exes = SELECT
@@ -57,9 +67,9 @@ sources:
           FROM glob(
             globs         = exec_globs,
             nosymlink     = true,
-            exclude_dirs  = ["/proc","/sys","/dev"]
+            exclude_dirs  = array(a="/proc", b="/sys", c="/dev")
           )
-          WHERE stat.mode_string LIKE '%x%'
+          WHERE stat.mode_string =~ "x"
             AND stat.uid != 0
 
         SELECT * FROM known_files
