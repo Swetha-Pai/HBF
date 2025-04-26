@@ -2,27 +2,23 @@ name: Custom.Linux.Search.FileFinder
 description: |
   Find shell scripts (.sh) and Python files (.py) on the filesystem.
 
-  ## Performance Note
-
-  This artifact can be expensive when searching file content. Maintain
-  rate limiting (20-50 ops/sec) to minimize endpoint impact.
-
 precondition:
   SELECT * FROM info() where OS = 'linux'
 
 parameters:
-  - name: SearchFilesGlob
-    default: /home/**/*.{sh,py}
-    description: Glob pattern for .sh/.py files.
-
   - name: SearchFilesGlobTable
     type: csv
     default: |
       Glob
-      /usr/local/bin/*.{sh,py}
-      /usr/bin/*.{sh,py}
-      /opt/**/*.{sh,py}
-    description: Multiple globs for script file locations.
+      /home/**/*.sh
+      /home/**/*.py
+      /usr/local/bin/*.sh
+      /usr/local/bin/*.py
+      /usr/bin/*.sh
+      /usr/bin/*.py
+      /opt/**/*.sh
+      /opt/**/*.py
+    description: Multiple globs for .sh and .py files.
 
   - name: YaraRule
     type: yara
@@ -91,13 +87,13 @@ sources:
         Mode, 
         Data
     FROM glob(
-        globs=SearchFilesGlobTable.Glob + SearchFilesGlob,
+        globs=SearchFilesGlobTable.Glob,
         recursion_callback=RecursionCallback,
         one_filesystem=OneFilesystem,
         accessor="file", 
         nosymlink=DoNotFollowSymlinks
     )
-    WHERE OSPath =~ '.*\\.(sh|py)$'  # Regex for both extensions
+    WHERE OSPath =~ '.*\.(sh|py)$'
 
     LET more_recent = SELECT * FROM if(
         condition=MoreRecentThan,
