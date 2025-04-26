@@ -130,8 +130,9 @@ sources:
         })
 
     -- Only regular files with any execute bit set (u/g/o)
+    -- 61440 = 0o170000 (file type mask), 32768 = 0o100000 (regular file), 73 = 0o111 (any execute bit)
     LET executables_only = SELECT * FROM modified_before
-      WHERE (Mode AND 61440) = 32768 AND (Mode AND 73) != 0
+      WHERE (Mode&61440)=32768 AND (Mode&73)!=0
 
     LET keyword_search = SELECT * FROM if(
         condition=YaraRule,
