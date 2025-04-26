@@ -1,12 +1,10 @@
 name: Custom.Detection.CommandLineDownloads
 description: |
-  Detects wget/curl downloads with output flags (-o/-O) in shell history
+  Strict detection of wget/curl download commands with output flags (-O/-o)
 
 parameters:
   - name: HistoryPaths
     default: |
-      /*.history
-      /*_history
       /home/*/.*_history
       /root/.*_history
       C:\\Users\\*\\AppData\\Roaming\\Microsoft\\Windows\\PowerShell\\*\\History*
@@ -26,10 +24,11 @@ sources:
             Line AS FullCommand,
             regex_replace(
               source=Line,
-              re=".*(curl\s+.*(-o|--output)|wget\s+.*(-O|--output-document)).*",
+              re='(wget\s+.*?(-O\s|--output-document\s)|curl\s+.*?(-o\s|--output\s))',
               replace="$1"
             ) AS DownloadCommand
           FROM parse_lines(filename=OSPath, accessor="auto")
           WHERE 
-            Line =~ "(curl.*(-o |--output )|wget.*(-O |--output-document ))"
+            Line =~ '(\bwget\b.*(-O\s|--output-document\s)|curl\b.*(-o\s|--output\s))'
+            AND NOT Line =~ "(\\?[a-zA-Z0-9_]+=)"  // Exclude parameterized URLs
         })
