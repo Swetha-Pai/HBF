@@ -1,0 +1,25 @@
+rule Linux_Malicious_Files
+{
+    meta:
+        description = "Detect potentially malicious Linux files"
+        author = "ChatGPT + You"
+        category = "Malware (Linux)"
+
+    strings:
+        $s1 = "/bin/bash" ascii
+        $s2 = "/bin/sh" ascii
+        $s3 = "nc -e" ascii
+        $s4 = "chmod 777" ascii
+        $s5 = "wget " ascii
+        $s6 = "curl " ascii
+        $s7 = "system(\"/bin/bash" ascii
+        $s8 = "bash -i >& /dev/tcp/" ascii
+        $s9 = "rm -rf /" ascii
+        $s10 = "crypto" ascii
+        $s11 = "XMRig" ascii
+        $s12 = "minerd" ascii
+        $s13 = "cpuminer" ascii
+
+    condition:
+        1 of ($s*)
+}
