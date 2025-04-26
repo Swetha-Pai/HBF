@@ -1,0 +1,234 @@
+name: Custom.Linux.MaliciousFileFinder
+description: |
+  Find potentially malicious files on Linux systems including:
+  - ELF binaries (native executables)
+  - Shell/Python/Perl scripts
+  - Java JAR files
+  - Malicious web shells (.php, .jsp, etc.)
+  - Kernel modules (.ko)
+  - Suspicious files in common dropper locations
+  - Files with executable permissions in user-writable directories
+
+precondition:
+  SELECT * FROM info() where OS = 'linux'
+
+parameters:
+  - name: Upload_File
+    default: N
+    type: bool
+
+  - name: Calculate_Hash
+    default: N
+    type: bool
+
+  - name: MoreRecentThan
+    default: ""
+    type: timestamp
+
+  - name: ModifiedBefore
+    default: ""
+    type: timestamp
+
+  - name: ExcludePathRegex
+    default: "^/(proc|sys|run|snap)"
+    type: regex
+    description: Exclude system paths.
+
+sources:
+- query: |
+    LET LocalDeviceMajor <= (253,7,8,9,11,65,66,67,68,69,70,71,128,129,130,131,132,133,134,135,202,253,254,259)
+
+    LET RecursionCallback = if(
+        condition=ExcludePathRegex,
+        then="x=>x.Data.DevMajor IN LocalDeviceMajor AND NOT x.OSPath =~ ExcludePathRegex",
+        else="x=>x.Data.DevMajor IN LocalDeviceMajor")
+
+    -- Scripts and executables in standard locations
+    LET script_globs = (
+      "/home/**/*.sh",
+      "/home/**/*.py",
+      "/home/**/*.pl",
+      "/usr/local/bin/*.sh",
+      "/usr/local/bin/*.py",
+      "/usr/local/bin/*.pl",
+      "/usr/bin/*.sh",
+      "/usr/bin/*.py",
+      "/usr/bin/*.pl",
+      "/opt/**/*.sh",
+      "/opt/**/*.py",
+      "/opt/**/*.pl"
+    )
+    
+    -- Web shells in web directories
+    LET webshell_globs = (
+      "/var/www/**/*.php",
+      "/var/www/**/*.jsp",
+      "/var/www/**/*.asp",
+      "/var/www/**/*.aspx",
+      "/var/www/**/*.cgi",
+      "/usr/share/nginx/**/*.php",
+      "/usr/share/nginx/**/*.jsp",
+      "/usr/share/apache*/**/*.php",
+      "/usr/share/apache*/**/*.jsp"
+    )
+    
+    -- Java JAR files
+    LET jar_globs = (
+      "/home/**/*.jar",
+      "/opt/**/*.jar",
+      "/usr/local/**/*.jar",
+      "/var/www/**/*.jar"
+    )
+    
+    -- Kernel modules
+    LET kernel_module_globs = (
+      "/lib/modules/**/*.ko",
+      "/usr/lib/modules/**/*.ko",
+      "/home/**/*.ko"
+    )
+    
+    -- Common dropper locations
+    LET dropper_location_globs = (
+      "/tmp/**",
+      "/var/tmp/**",
+      "/dev/shm/**"
+    )
+    
+    -- Combine all globs
+    LET all_globs = (
+      script_globs,
+      webshell_globs,
+      jar_globs,
+      kernel_module_globs,
+      dropper_location_globs
+    )
+
+    -- Find files with executable permissions in user-writable directories
+    LET executable_files = SELECT 
+        OSPath,
+        Sys.mft as Inode,
+        Mode.String AS Mode, 
+        Size,
+        Mtime AS MTime,
+        Atime AS ATime,
+        Ctime AS CTime,
+        IsDir, 
+        Mode, 
+        Data,
+        "Executable in writable dir" AS FileType
+    FROM glob(
+        globs=(
+          "/home/**",
+          "/tmp/**",
+          "/var/tmp/**",
+          "/dev/shm/**"
+        ),
+        recursion_callback=RecursionCallback,
+        one_filesystem=false,
+        accessor="file", 
+        nosymlink=false
+    )
+    WHERE NOT IsDir AND Mode.Permissions.Executable AND Mode.Permissions.OtherWrite
+    
+    -- Find suspicious file types
+    LET suspicious_files = SELECT 
+        OSPath,
+        Sys.mft as Inode,
+        Mode.String AS Mode, 
+        Size,
+        Mtime AS MTime,
+        Atime AS ATime,
+        Ctime AS CTime,
+        IsDir, 
+        Mode, 
+        Data,
+        CASE 
+          WHEN OSPath =~ '.*\\.sh$' THEN "Shell script"
+          WHEN OSPath =~ '.*\\.py$' THEN "Python script"
+          WHEN OSPath =~ '.*\\.pl$' THEN "Perl script"
+          WHEN OSPath =~ '.*\\.(php|jsp|asp|aspx|cgi)$' THEN "Web shell"
+          WHEN OSPath =~ '.*\\.jar$' THEN "Java JAR"
+          WHEN OSPath =~ '.*\\.ko$' THEN "Kernel module"
+          WHEN OSPath =~ '^/(tmp|var/tmp|dev/shm)/' THEN "Dropper location"
+          ELSE "Other suspicious"
+        END AS FileType
+    FROM glob(
+        globs=all_globs,
+        recursion_callback=RecursionCallback,
+        one_filesystem=false,
+        accessor="file", 
+        nosymlink=false
+    )
+    WHERE NOT IsDir
+    
+    -- Find ELF binaries
+    LET elf_files = SELECT
+        OSPath,
+        Sys.mft as Inode,
+        Mode.String AS Mode, 
+        Size,
+        Mtime AS MTime,
+        Atime AS ATime,
+        Ctime AS CTime,
+        IsDir, 
+        Mode, 
+        Data,
+        "ELF binary" AS FileType
+    FROM glob(
+        globs=(
+          "/home/**",
+          "/usr/local/bin/*",
+          "/usr/local/sbin/*",
+          "/tmp/**",
+          "/var/tmp/**",
+          "/dev/shm/**"
+        ),
+        recursion_callback=RecursionCallback,
+        one_filesystem=false,
+        accessor="file", 
+        nosymlink=false
+    )
+    WHERE NOT IsDir AND Mode.Permissions.Executable AND 
+          read_file(filename=OSPath, length=4, offset=0) =~ '^\\x7fELF'
+    
+    -- Combine all results
+    LET combined_results = SELECT * FROM suspicious_files
+    UNION SELECT * FROM executable_files
+    UNION SELECT * FROM elf_files
+    
+    -- Apply time filters
+    LET more_recent = SELECT * FROM if(
+        condition=MoreRecentThan,
+        then={ SELECT * FROM combined_results WHERE MTime > MoreRecentThan },
+        else=combined_results)
+
+    LET modified_before = SELECT * FROM if(
+        condition=ModifiedBefore,
+        then={ SELECT * FROM more_recent WHERE MTime < ModifiedBefore },
+        else=more_recent)
+
+    -- Final results with upload and hash options
+    SELECT 
+        OSPath, 
+        Inode, 
+        Mode, 
+        Size, 
+        ATime,
+        MTime, 
+        CTime,
+        FileType,
+        if(condition=Upload_File and Mode.IsRegular,
+            then=upload(file=OSPath)) AS Upload,
+        if(condition=Calculate_Hash and Mode.IsRegular,
+            then=hash(path=OSPath)) AS Hash
+    FROM modified_before
+
+column_types:
+  - name: ATime
+    type: timestamp
+  - name: MTime
+    type: timestamp
+  - name: CTime
+    type: timestamp
+  - name: Upload
+    type: preview_upload
