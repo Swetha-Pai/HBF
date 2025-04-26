@@ -16,38 +16,32 @@ sources:
         FROM glob(globs=split(string=HistoryPaths, sep="\n"))
         WHERE Size > 0
 
-      SELECT * FROM foreach(
+      SELECT
+        OSPath,
+        Mtime,
+        Username,
+        Line AS FullCommand,
+        result.tool AS DownloadTool,
+        result.url AS URL,
+        if(result.output != "", result.output,
+          regex_replace(result.url, ".*/([^/?#]+).*", "$1")
+        ) AS Filename
+      FROM foreach(
         row=history_files,
         query={
           SELECT
-            OSPath,
-            Mtime,
-            Username,
-            Line AS FullCommand,
-
-            # Extract wget or curl
-            regex_replace(
-              source=Line,
-              re=".*\\b(wget|curl)\\b.*",
-              replace="$1"
-            ) AS DownloadTool,
-
-            # Filename: prefer -O/--output, else last URL segment
-            if(
-              condition=Line =~ "(?:-O|--output(?:-document)?)[ =]+[\\w.\\-/\\\\]+",
-              then=regex_replace(
-                source=Line,
-                re=".*(?:-O|--output(?:-document)?)[ =]+([\\w.\\-/\\\\]+).*",
-                replace="$1"
-              ),
-              else=regex_replace(
-                source=Line,
-                re=".*https?://[^\\s]+/([^\\s/]+)(?:\\s|$).*",
-                replace="$1"
-              )
-            ) AS Filename
-
+            Line,
+            parse_string_with_regex(
+              string=Line,
+              regex=[
+                // wget/curl with -O or --output
+                "(?P<tool>wget|curl)\\s+[^\\n]*?(?:-O|--output(?:-document)?)\\s*(?P<output>\\S+)\\s+[^\\n]*?(?P<url>https?://\\S+)",
+                // wget/curl without output flag
+                "(?P<tool>wget|curl)\\s+[^\\n]*?(?P<url>https?://\\S+)"
+              ]
+            ) AS result
           FROM parse_lines(filename=OSPath, accessor="auto")
           WHERE Line =~ "\\b(wget|curl)\\b" AND Line =~ "https?://"
         }
       )
+      WHERE DownloadTool != ""
