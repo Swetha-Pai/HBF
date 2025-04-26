@@ -43,148 +43,135 @@ sources:
         then="x=>x.Data.DevMajor IN LocalDeviceMajor AND NOT x.OSPath =~ ExcludePathRegex",
         else="x=>x.Data.DevMajor IN LocalDeviceMajor")
 
-    -- Scripts and executables in standard locations
-    LET script_globs = (
-      "/home/**/*.sh",
-      "/home/**/*.py",
-      "/home/**/*.pl",
-      "/usr/local/bin/*.sh",
-      "/usr/local/bin/*.py",
-      "/usr/local/bin/*.pl",
-      "/usr/bin/*.sh",
-      "/usr/bin/*.py",
-      "/usr/bin/*.pl",
-      "/opt/**/*.sh",
-      "/opt/**/*.py",
-      "/opt/**/*.pl"
-    )
-    
-    -- Web shells in web directories
-    LET webshell_globs = (
-      "/var/www/**/*.php",
-      "/var/www/**/*.jsp",
-      "/var/www/**/*.asp",
-      "/var/www/**/*.aspx",
-      "/var/www/**/*.cgi",
-      "/usr/share/nginx/**/*.php",
-      "/usr/share/nginx/**/*.jsp",
-      "/usr/share/apache*/**/*.php",
-      "/usr/share/apache*/**/*.jsp"
-    )
-    
-    -- Java JAR files
-    LET jar_globs = (
-      "/home/**/*.jar",
-      "/opt/**/*.jar",
-      "/usr/local/**/*.jar",
-      "/var/www/**/*.jar"
-    )
-    
-    -- Kernel modules
-    LET kernel_module_globs = (
-      "/lib/modules/**/*.ko",
-      "/usr/lib/modules/**/*.ko",
-      "/home/**/*.ko"
-    )
-    
-    -- Common dropper locations
-    LET dropper_location_globs = (
-      "/tmp/**",
-      "/var/tmp/**",
-      "/dev/shm/**"
-    )
-    
     -- Find shell scripts
-    LET shell_script_results = SELECT 
+    LET shell_scripts = SELECT 
         OSPath, Sys.mft as Inode, Mode.String AS Mode, Size,
         Mtime AS MTime, Atime AS ATime, Ctime AS CTime,
-        IsDir, Mode, "Shell script" AS FileType
+        "Shell script" AS FileType
     FROM glob(
-        globs=script_globs,
+        globs=(
+          "/home/**/*.sh",
+          "/usr/local/bin/*.sh",
+          "/usr/bin/*.sh",
+          "/opt/**/*.sh"
+        ),
         recursion_callback=RecursionCallback,
         one_filesystem=false,
         accessor="file", 
         nosymlink=false
     )
-    WHERE OSPath =~ '.*\\.sh$' AND NOT IsDir
+    WHERE NOT IsDir
     
     -- Find python scripts
-    LET python_script_results = SELECT 
+    LET python_scripts = SELECT 
         OSPath, Sys.mft as Inode, Mode.String AS Mode, Size,
         Mtime AS MTime, Atime AS ATime, Ctime AS CTime,
-        IsDir, Mode, "Python script" AS FileType
+        "Python script" AS FileType
     FROM glob(
-        globs=script_globs,
+        globs=(
+          "/home/**/*.py",
+          "/usr/local/bin/*.py",
+          "/usr/bin/*.py",
+          "/opt/**/*.py"
+        ),
         recursion_callback=RecursionCallback,
         one_filesystem=false,
         accessor="file", 
         nosymlink=false
     )
-    WHERE OSPath =~ '.*\\.py$' AND NOT IsDir
+    WHERE NOT IsDir
     
     -- Find perl scripts
-    LET perl_script_results = SELECT 
+    LET perl_scripts = SELECT 
         OSPath, Sys.mft as Inode, Mode.String AS Mode, Size,
         Mtime AS MTime, Atime AS ATime, Ctime AS CTime,
-        IsDir, Mode, "Perl script" AS FileType
+        "Perl script" AS FileType
     FROM glob(
-        globs=script_globs,
+        globs=(
+          "/home/**/*.pl",
+          "/usr/local/bin/*.pl",
+          "/usr/bin/*.pl",
+          "/opt/**/*.pl"
+        ),
         recursion_callback=RecursionCallback,
         one_filesystem=false,
         accessor="file", 
         nosymlink=false
     )
-    WHERE OSPath =~ '.*\\.pl$' AND NOT IsDir
+    WHERE NOT IsDir
     
     -- Find web shells
-    LET webshell_results = SELECT 
+    LET web_shells = SELECT 
         OSPath, Sys.mft as Inode, Mode.String AS Mode, Size,
         Mtime AS MTime, Atime AS ATime, Ctime AS CTime,
-        IsDir, Mode, "Web shell" AS FileType
+        "Web shell" AS FileType
     FROM glob(
-        globs=webshell_globs,
+        globs=(
+          "/var/www/**/*.php",
+          "/var/www/**/*.jsp",
+          "/var/www/**/*.asp",
+          "/var/www/**/*.aspx",
+          "/var/www/**/*.cgi",
+          "/usr/share/nginx/**/*.php",
+          "/usr/share/nginx/**/*.jsp",
+          "/usr/share/apache*/**/*.php",
+          "/usr/share/apache*/**/*.jsp"
+        ),
         recursion_callback=RecursionCallback,
         one_filesystem=false,
         accessor="file", 
         nosymlink=false
     )
-    WHERE OSPath =~ '.*\\.(php|jsp|asp|aspx|cgi)$' AND NOT IsDir
+    WHERE NOT IsDir
     
     -- Find JAR files
-    LET jar_results = SELECT 
+    LET jar_files = SELECT 
         OSPath, Sys.mft as Inode, Mode.String AS Mode, Size,
         Mtime AS MTime, Atime AS ATime, Ctime AS CTime,
-        IsDir, Mode, "Java JAR" AS FileType
+        "Java JAR" AS FileType
     FROM glob(
-        globs=jar_globs,
+        globs=(
+          "/home/**/*.jar",
+          "/opt/**/*.jar",
+          "/usr/local/**/*.jar",
+          "/var/www/**/*.jar"
+        ),
         recursion_callback=RecursionCallback,
         one_filesystem=false,
         accessor="file", 
         nosymlink=false
     )
-    WHERE OSPath =~ '.*\\.jar$' AND NOT IsDir
+    WHERE NOT IsDir
     
     -- Find kernel modules
-    LET kernel_module_results = SELECT 
+    LET kernel_modules = SELECT 
         OSPath, Sys.mft as Inode, Mode.String AS Mode, Size,
         Mtime AS MTime, Atime AS ATime, Ctime AS CTime,
-        IsDir, Mode, "Kernel module" AS FileType
+        "Kernel module" AS FileType
     FROM glob(
-        globs=kernel_module_globs,
+        globs=(
+          "/lib/modules/**/*.ko",
+          "/usr/lib/modules/**/*.ko",
+          "/home/**/*.ko"
+        ),
         recursion_callback=RecursionCallback,
         one_filesystem=false,
         accessor="file", 
         nosymlink=false
     )
-    WHERE OSPath =~ '.*\\.ko$' AND NOT IsDir
+    WHERE NOT IsDir
     
     -- Find files in dropper locations
-    LET dropper_file_results = SELECT 
+    LET dropper_files = SELECT 
         OSPath, Sys.mft as Inode, Mode.String AS Mode, Size,
         Mtime AS MTime, Atime AS ATime, Ctime AS CTime,
-        IsDir, Mode, "Dropper location file" AS FileType
+        "Dropper location file" AS FileType
     FROM glob(
-        globs=dropper_location_globs,
+        globs=(
+          "/tmp/**",
+          "/var/tmp/**",
+          "/dev/shm/**"
+        ),
         recursion_callback=RecursionCallback,
         one_filesystem=false,
         accessor="file", 
@@ -193,10 +180,10 @@ sources:
     WHERE NOT IsDir
     
     -- Find executable files in writable dirs
-    LET executable_file_results = SELECT 
+    LET executable_files = SELECT 
         OSPath, Sys.mft as Inode, Mode.String AS Mode, Size,
         Mtime AS MTime, Atime AS ATime, Ctime AS CTime,
-        IsDir, Mode, "Executable in writable dir" AS FileType
+        "Executable in writable dir" AS FileType
     FROM glob(
         globs=(
           "/home/**",
@@ -212,10 +199,10 @@ sources:
     WHERE NOT IsDir AND Mode.Permissions.Executable AND Mode.Permissions.OtherWrite
     
     -- Find ELF binaries
-    LET elf_file_results = SELECT
+    LET elf_files = SELECT
         OSPath, Sys.mft as Inode, Mode.String AS Mode, Size,
         Mtime AS MTime, Atime AS ATime, Ctime AS CTime,
-        IsDir, Mode, "ELF binary" AS FileType
+        "ELF binary" AS FileType
     FROM glob(
         globs=(
           "/home/**",
@@ -233,36 +220,44 @@ sources:
     WHERE NOT IsDir AND Mode.Permissions.Executable AND 
           read_file(filename=OSPath, length=4, offset=0) =~ '^\\x7fELF'
     
-    -- Create a list of queries to run
-    LET file_types = SELECT "shell_script_results" AS name FROM scope()
+    -- Process shell scripts
+    LET shell_results = SELECT * FROM shell_scripts
     
-    -- Use foreach to process each query type
-    LET all_results = SELECT * FROM foreach(
-        row={
-            SELECT "shell_script_results" AS name FROM scope()
-            SELECT "python_script_results" AS name FROM scope()
-            SELECT "perl_script_results" AS name FROM scope()
-            SELECT "webshell_results" AS name FROM scope()
-            SELECT "jar_results" AS name FROM scope()
-            SELECT "kernel_module_results" AS name FROM scope()
-            SELECT "dropper_file_results" AS name FROM scope()
-            SELECT "executable_file_results" AS name FROM scope()
-            SELECT "elf_file_results" AS name FROM scope()
-        },
-        query={
-            SELECT * FROM switch(
-                a=name,
-                shell_script_results=shell_script_results,
-                python_script_results=python_script_results,
-                perl_script_results=perl_script_results,
-                webshell_results=webshell_results,
-                jar_results=jar_results,
-                kernel_module_results=kernel_module_results,
-                dropper_file_results=dropper_file_results,
-                executable_file_results=executable_file_results,
-                elf_file_results=elf_file_results
-            )
-        }
+    -- Process python scripts
+    LET python_results = SELECT * FROM python_scripts
+    
+    -- Process perl scripts
+    LET perl_results = SELECT * FROM perl_scripts
+    
+    -- Process web shells
+    LET webshell_results = SELECT * FROM web_shells
+    
+    -- Process JAR files
+    LET jar_results = SELECT * FROM jar_files
+    
+    -- Process kernel modules
+    LET kernel_results = SELECT * FROM kernel_modules
+    
+    -- Process dropper files
+    LET dropper_results = SELECT * FROM dropper_files
+    
+    -- Process executable files
+    LET exec_results = SELECT * FROM executable_files
+    
+    -- Process ELF files
+    LET elf_results = SELECT * FROM elf_files
+    
+    -- Combine all results (using a simpler approach)
+    LET all_results = SELECT * FROM chain(
+        a=shell_results, 
+        b=python_results,
+        c=perl_results,
+        d=webshell_results,
+        e=jar_results,
+        f=kernel_results,
+        g=dropper_results,
+        h=exec_results,
+        i=elf_results
     )
     
     -- Apply time filters
@@ -301,11 +296,12 @@ sources:
         MTime, 
         CTime,
         FileType,
-        if(condition=Upload_File AND Mode.IsRegular,
+        if(condition=Upload_File,
             then=upload(file=OSPath)) AS Upload,
-        if(condition=Calculate_Hash AND Mode.IsRegular,
+        if(condition=Calculate_Hash,
             then=hash(path=OSPath)) AS Hash
     FROM time_filtered
+    WHERE OSPath
 
 column_types:
   - name: ATime
