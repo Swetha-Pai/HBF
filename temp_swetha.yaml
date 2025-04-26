@@ -1,4 +1,5 @@
 name: Linux.Detection.MultiTypeMalwareHunt
+type: CLIENT
 description: |
   Hunt for potential Linux malware files:
    - ELF binaries and shared objects (.elf, .bin, .so, .ko)
@@ -6,68 +7,68 @@ description: |
    - Web shells (.php, .jsp)
    - Java archives (.jar)
    - Any executable dropped into /tmp, /var/tmp, /home or /var/www not owned by root
-platform: linux
+precondition: |
+  SELECT OS FROM info() WHERE OS = 'Linux'
 sources:
-  - precondition:
-      query: |
-        SELECT OS FROM info()
-        WHERE OS = 'Linux'
-    query: |
-      #–– Directories to scan ––
-      LET search_paths = [
-        "/usr/bin", "/usr/local/bin", "/bin", "/sbin", "/lib", "/lib64",
-        "/tmp", "/var/tmp", "/home", "/var/www"
-      ]
+  - name: MultiTypeMalwareHunt
+    precondition: ""
+    queries:
+      - |
+        #–– Directories to scan ––
+        LET search_paths = [
+          "/usr/bin", "/usr/local/bin", "/bin", "/sbin", "/lib", "/lib64",
+          "/tmp", "/var/tmp", "/home", "/var/www"
+        ]
 
-      #–– File‐extension patterns ––
-      LET elf_pats    = ["*.elf", "*.bin", "*.so", "*.ko"]
-      LET script_pats = ["*.sh",  "*.py",  "*.pl"]
-      LET web_pats    = ["*.php", "*.jsp"]
-      LET jar_pats    = ["*.jar"]
+        #–– File‐extension patterns ––
+        LET elf_pats    = ["*.elf", "*.bin", "*.so", "*.ko"]
+        LET script_pats = ["*.sh",  "*.py",  "*.pl"]
+        LET web_pats    = ["*.php", "*.jsp"]
+        LET jar_pats    = ["*.jar"]
 
-      #–– Build glob lists ––
-      LET elf_globs    = [ p + "/**/" + pat for p in search_paths for pat in elf_pats ]
-      LET script_globs = [ p + "/**/" + pat for p in search_paths for pat in script_pats ]
-      LET web_globs    = [ p + "/**/" + pat for p in search_paths for pat in web_pats ]
-      LET jar_globs    = [ p + "/**/" + pat for p in search_paths for pat in jar_pats ]
+        #–– Build glob lists ––
+        LET elf_globs    = [ p + "/**/" + pat for p in search_paths for pat in elf_pats ]
+        LET script_globs = [ p + "/**/" + pat for p in search_paths for pat in script_pats ]
+        LET web_globs    = [ p + "/**/" + pat for p in search_paths for pat in web_pats ]
+        LET jar_globs    = [ p + "/**/" + pat for p in search_paths for pat in jar_pats ]
 
-      #–– Catch‐all for any executable in drop dirs ––
-      LET drop_dirs = ["/tmp", "/var/tmp", "/home", "/var/www"]
-      LET exec_globs = [ d + "/**/*" for d in drop_dirs ]
+        #–– Catch‐all for any executable in drop dirs ––
+        LET drop_dirs = ["/tmp", "/var/tmp", "/home", "/var/www"]
+        LET exec_globs = [ d + "/**/*" for d in drop_dirs ]
 
-      #–– Scan known extensions ––
-      LET known_files = SELECT
-          FullPath              AS Path,
-          OSPath.Basename()     AS Name,
-          OSPath.Extension()    AS Ext,
-          stat.mode_string      AS Perms,
-          stat.uid              AS UID,
-          stat.mtime            AS MTime,
-          "known_extension"     AS Reason
-        FROM glob(
-          globs = elf_globs + script_globs + web_globs + jar_globs,
-          nosymlink = true,
-          exclude_dirs = ["/proc","/sys","/dev"]
-        )
+        #–– Scan known‐extension files ––
+        LET known_files = SELECT
+            FullPath              AS Path,
+            OSPath.Basename()     AS Name,
+            OSPath.Extension()    AS Ext,
+            stat.mode_string      AS Perms,
+            stat.uid              AS UID,
+            stat.mtime            AS MTime,
+            "known_extension"     AS Reason
+          FROM glob(
+            globs         = elf_globs + script_globs + web_globs + jar_globs,
+            nosymlink     = true,
+            exclude_dirs  = ["/proc","/sys","/dev"]
+          )
 
-      #–– Scan drop dirs for any file with an “x” in its permissions and not owned by root ––
-      LET dropped_exes = SELECT
-          FullPath              AS Path,
-          OSPath.Basename()     AS Name,
-          OSPath.Extension()    AS Ext,
-          stat.mode_string      AS Perms,
-          stat.uid              AS UID,
-          stat.mtime            AS MTime,
-          "dropped_executable"  AS Reason
-        FROM glob(
-          globs = exec_globs,
-          nosymlink = true,
-          exclude_dirs = ["/proc","/sys","/dev"]
-        )
-        WHERE stat.mode_string LIKE '%x%'
-          AND stat.uid != 0
+        #–– Scan drop dirs for any file with an “x” in its permissions and not owned by root ––
+        LET dropped_exes = SELECT
+            FullPath              AS Path,
+            OSPath.Basename()     AS Name,
+            OSPath.Extension()    AS Ext,
+            stat.mode_string      AS Perms,
+            stat.uid              AS UID,
+            stat.mtime            AS MTime,
+            "dropped_executable"  AS Reason
+          FROM glob(
+            globs         = exec_globs,
+            nosymlink     = true,
+            exclude_dirs  = ["/proc","/sys","/dev"]
+          )
+          WHERE stat.mode_string LIKE '%x%'
+            AND stat.uid != 0
 
-      #–– Combine results ––
-      SELECT * FROM known_files
-      UNION
-      SELECT * FROM dropped_exes
+        #–– Combine results ––
+        SELECT * FROM known_files
+        UNION
+        SELECT * FROM dropped_exes
