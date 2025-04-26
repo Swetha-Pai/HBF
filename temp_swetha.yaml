@@ -131,7 +131,7 @@ sources:
 
     -- Only regular files with any execute bit set (u/g/o)
     LET executables_only = SELECT * FROM modified_before
-      WHERE (Mode & 61440) = 32768 AND (Mode & 73) != 0
+      WHERE (Mode AND 61440) = 32768 AND (Mode AND 73) != 0
 
     LET keyword_search = SELECT * FROM if(
         condition=YaraRule,
