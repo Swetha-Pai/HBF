@@ -1,4 +1,4 @@
-name: Custom.Linux.Search.FileFinder
+name: Custom.Linux.Search.BinaryFiles
 description: |
     Find files on the filesystem using the filename or content.
 
@@ -141,7 +141,7 @@ sources:
                 nosymlink=DoNotFollowSymlinks
             )
             WHERE NOT (
-                OSPath =~ "^/home/.*/\\.cache/go-build/" 
+                OSPath =~ "^/home/.*/\\.cache/"
             )
 
         LET more_recent = SELECT * FROM if(
