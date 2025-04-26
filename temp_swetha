@@ -1,6 +1,7 @@
 name: Custom.Detection.CommandLineDownloads
 description: |
-  Strict detection of wget/curl download commands with output flags (-O/-o)
+  Detects wget/curl downloads with or without explicit output flags,
+  including indirect file operations.
 
 parameters:
   - name: HistoryPaths
@@ -22,13 +23,14 @@ sources:
             Mtime,
             Username,
             Line AS FullCommand,
-            regex_replace(
-              source=Line,
-              re='(wget\s+.*?(-O\s|--output-document\s)|curl\s+.*?(-o\s|--output\s))',
-              replace="$1"
-            ) AS DownloadCommand
+            if(
+              condition=Line =~ "(wget|curl)\\s+.*https?://",
+              then=regex_replace(
+                source=Line,
+                re=".*(wget|curl)\\b.*",
+                replace="$1"
+              )
+            ) AS DownloadTool
           FROM parse_lines(filename=OSPath, accessor="auto")
-          WHERE 
-            Line =~ '(\bwget\b.*(-O\s|--output-document\s)|curl\b.*(-o\s|--output\s))'
-            AND NOT Line =~ "(\\?[a-zA-Z0-9_]+=)"  // Exclude parameterized URLs
+          WHERE DownloadTool
         })
