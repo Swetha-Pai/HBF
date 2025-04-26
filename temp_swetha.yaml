@@ -3,7 +3,6 @@ description: |
   Find executable files on the filesystem using the filename or content.
 
   ## Performance Note
-
   This artifact can be quite expensive, especially if we search file
   content. It will require opening each file and reading its entire
   content. To minimize the impact on the endpoint we recommend this
@@ -11,20 +10,15 @@ description: |
   second).
 
   This artifact is useful in the following scenarios:
-
     * We need to locate all the places on our network where customer
       data has been copied.
-
     * We’ve identified malware in a data breach, named using short
       random strings in specific folders and need to search for other
       instances across the network.
-
     * We believe our user account credentials have been dumped and
       need to locate them.
-
     * We need to search for exposed credit card data to satisfy PCI
       requirements.
-
     * We have a sample of data that has been disclosed and need to
       locate other similar files
 
@@ -86,9 +80,6 @@ parameters:
 
 sources:
 - query: |
-    -- This list comes from cat /proc/devices and represents actual
-    -- devices. Most virtual devices like /proc, fuse and network
-    -- filesystems have a major number of 0.
     LET LocalDeviceMajor <= (
        253,
        7,   -- loop
@@ -127,11 +118,13 @@ sources:
 
     LET file_search = SELECT OSPath,
                Sys.mft as Inode,
-               Mode.String AS Mode, Size,
+               Mode,
+               Size,
                Mtime AS MTime,
                Atime AS ATime,
                Ctime AS CTime,
-               IsDir, Mode, Data
+               IsDir,
+               Data
         FROM glob(globs=SearchFilesGlobTable.Glob + SearchFilesGlob,
                   recursion_callback=RecursionCallback,
                   one_filesystem=OneFilesystem,
@@ -156,38 +149,29 @@ sources:
           SELECT * FROM more_recent
         })
 
-    -- Only regular executable files
-    LET executables_only = SELECT * FROM modified_before WHERE Mode.IsRegular AND Mode.IsExecutable
+    -- Parse Mode integer to get permissions and type
+    LET parsed_modes = SELECT *, parse_mode(mode=Mode) AS Permissions FROM modified_before
+
+    -- Only regular files with any executable bit set
+    LET executables_only = SELECT * FROM parsed_modes WHERE Permissions.IsRegular AND Permissions.IsExecutable
 
     LET keyword_search = SELECT * FROM if(
         condition=YaraRule,
         then={
           SELECT * FROM foreach(
-            row={
-               SELECT * FROM executables_only
-            },
+            row={ SELECT * FROM executables_only },
             query={
-               SELECT OSPath, Inode, Mode,
-                      Size, ATime, MTime, CTime,
+               SELECT OSPath, Inode, Mode, Size, ATime, MTime, CTime,
                       str(str=String.Data) As Keywords
-
-               FROM yara(files=OSPath,
-                         key="A",
-                         rules=YaraRule,
-                         accessor="file")
+               FROM yara(files=OSPath, key="A", rules=YaraRule, accessor="file")
             })
         }, else={
           SELECT *, NULL AS Keywords FROM executables_only
         })
 
-    SELECT OSPath, Inode, Mode, Size, ATime,
-             MTime, CTime, Keywords,
-               if(condition=Upload_File and Mode.IsRegular,
-                  then=upload(file=OSPath,
-                              accessor="file")) AS Upload,
-               if(condition=Calculate_Hash and Mode.IsRegular,
-                  then=hash(path=OSPath,
-                            accessor="file")) AS Hash
+    SELECT OSPath, Inode, Mode, Size, ATime, MTime, CTime, Keywords,
+           if(condition=Upload_File, then=upload(file=OSPath)) AS Upload,
+           if(condition=Calculate_Hash, then=hash(path=OSPath)) AS Hash
     FROM keyword_search
 
 column_types:
