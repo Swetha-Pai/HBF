@@ -44,7 +44,7 @@ sources:
         else="x=>x.Data.DevMajor IN LocalDeviceMajor")
 
     -- Find shell scripts
-    SELECT 
+    LET shell_scripts = SELECT 
         OSPath, 
         Sys.mft as Inode, 
         Mode.String AS Mode, 
@@ -52,11 +52,7 @@ sources:
         Mtime AS MTime, 
         Atime AS ATime, 
         Ctime AS CTime,
-        "Shell script" AS FileType,
-        if(condition=Upload_File,
-            then=upload(file=OSPath)) AS Upload,
-        if(condition=Calculate_Hash,
-            then=hash(path=OSPath)) AS Hash
+        "Shell script" AS FileType
     FROM glob(
         globs=(
           "/home/**/*.sh",
@@ -69,17 +65,10 @@ sources:
         accessor="file", 
         nosymlink=false
     )
-    WHERE NOT IsDir AND 
-        if(condition=MoreRecentThan,
-            then=if(condition=ModifiedBefore,
-                    then=Mtime > MoreRecentThan AND Mtime < ModifiedBefore,
-                    else=Mtime > MoreRecentThan),
-            else=if(condition=ModifiedBefore,
-                    then=Mtime < ModifiedBefore,
-                    else=TRUE))
-
+    WHERE NOT IsDir
+    
     -- Find python scripts
-    SELECT 
+    LET python_scripts = SELECT 
         OSPath, 
         Sys.mft as Inode, 
         Mode.String AS Mode, 
@@ -87,11 +76,7 @@ sources:
         Mtime AS MTime, 
         Atime AS ATime, 
         Ctime AS CTime,
-        "Python script" AS FileType,
-        if(condition=Upload_File,
-            then=upload(file=OSPath)) AS Upload,
-        if(condition=Calculate_Hash,
-            then=hash(path=OSPath)) AS Hash
+        "Python script" AS FileType
     FROM glob(
         globs=(
           "/home/**/*.py",
@@ -104,17 +89,10 @@ sources:
         accessor="file", 
         nosymlink=false
     )
-    WHERE NOT IsDir AND 
-        if(condition=MoreRecentThan,
-            then=if(condition=ModifiedBefore,
-                    then=Mtime > MoreRecentThan AND Mtime < ModifiedBefore,
-                    else=Mtime > MoreRecentThan),
-            else=if(condition=ModifiedBefore,
-                    then=Mtime < ModifiedBefore,
-                    else=TRUE))
+    WHERE NOT IsDir
     
     -- Find perl scripts
-    SELECT 
+    LET perl_scripts = SELECT 
         OSPath, 
         Sys.mft as Inode, 
         Mode.String AS Mode, 
@@ -122,11 +100,7 @@ sources:
         Mtime AS MTime, 
         Atime AS ATime, 
         Ctime AS CTime,
-        "Perl script" AS FileType,
-        if(condition=Upload_File,
-            then=upload(file=OSPath)) AS Upload,
-        if(condition=Calculate_Hash,
-            then=hash(path=OSPath)) AS Hash
+        "Perl script" AS FileType
     FROM glob(
         globs=(
           "/home/**/*.pl",
@@ -139,17 +113,10 @@ sources:
         accessor="file", 
         nosymlink=false
     )
-    WHERE NOT IsDir AND 
-        if(condition=MoreRecentThan,
-            then=if(condition=ModifiedBefore,
-                    then=Mtime > MoreRecentThan AND Mtime < ModifiedBefore,
-                    else=Mtime > MoreRecentThan),
-            else=if(condition=ModifiedBefore,
-                    then=Mtime < ModifiedBefore,
-                    else=TRUE))
+    WHERE NOT IsDir
     
     -- Find web shells
-    SELECT 
+    LET web_shells = SELECT 
         OSPath, 
         Sys.mft as Inode, 
         Mode.String AS Mode, 
@@ -157,11 +124,7 @@ sources:
         Mtime AS MTime, 
         Atime AS ATime, 
         Ctime AS CTime,
-        "Web shell" AS FileType,
-        if(condition=Upload_File,
-            then=upload(file=OSPath)) AS Upload,
-        if(condition=Calculate_Hash,
-            then=hash(path=OSPath)) AS Hash
+        "Web shell" AS FileType
     FROM glob(
         globs=(
           "/var/www/**/*.php",
@@ -179,17 +142,10 @@ sources:
         accessor="file", 
         nosymlink=false
     )
-    WHERE NOT IsDir AND 
-        if(condition=MoreRecentThan,
-            then=if(condition=ModifiedBefore,
-                    then=Mtime > MoreRecentThan AND Mtime < ModifiedBefore,
-                    else=Mtime > MoreRecentThan),
-            else=if(condition=ModifiedBefore,
-                    then=Mtime < ModifiedBefore,
-                    else=TRUE))
+    WHERE NOT IsDir
     
     -- Find JAR files
-    SELECT 
+    LET jar_files = SELECT 
         OSPath, 
         Sys.mft as Inode, 
         Mode.String AS Mode, 
@@ -197,11 +153,7 @@ sources:
         Mtime AS MTime, 
         Atime AS ATime, 
         Ctime AS CTime,
-        "Java JAR" AS FileType,
-        if(condition=Upload_File,
-            then=upload(file=OSPath)) AS Upload,
-        if(condition=Calculate_Hash,
-            then=hash(path=OSPath)) AS Hash
+        "Java JAR" AS FileType
     FROM glob(
         globs=(
           "/home/**/*.jar",
@@ -214,17 +166,10 @@ sources:
         accessor="file", 
         nosymlink=false
     )
-    WHERE NOT IsDir AND 
-        if(condition=MoreRecentThan,
-            then=if(condition=ModifiedBefore,
-                    then=Mtime > MoreRecentThan AND Mtime < ModifiedBefore,
-                    else=Mtime > MoreRecentThan),
-            else=if(condition=ModifiedBefore,
-                    then=Mtime < ModifiedBefore,
-                    else=TRUE))
+    WHERE NOT IsDir
     
     -- Find kernel modules
-    SELECT 
+    LET kernel_modules = SELECT 
         OSPath, 
         Sys.mft as Inode, 
         Mode.String AS Mode, 
@@ -232,11 +177,7 @@ sources:
         Mtime AS MTime, 
         Atime AS ATime, 
         Ctime AS CTime,
-        "Kernel module" AS FileType,
-        if(condition=Upload_File,
-            then=upload(file=OSPath)) AS Upload,
-        if(condition=Calculate_Hash,
-            then=hash(path=OSPath)) AS Hash
+        "Kernel module" AS FileType
     FROM glob(
         globs=(
           "/lib/modules/**/*.ko",
@@ -248,17 +189,10 @@ sources:
         accessor="file", 
         nosymlink=false
     )
-    WHERE NOT IsDir AND 
-        if(condition=MoreRecentThan,
-            then=if(condition=ModifiedBefore,
-                    then=Mtime > MoreRecentThan AND Mtime < ModifiedBefore,
-                    else=Mtime > MoreRecentThan),
-            else=if(condition=ModifiedBefore,
-                    then=Mtime < ModifiedBefore,
-                    else=TRUE))
+    WHERE NOT IsDir
     
     -- Find files in dropper locations
-    SELECT 
+    LET dropper_files = SELECT 
         OSPath, 
         Sys.mft as Inode, 
         Mode.String AS Mode, 
@@ -266,11 +200,7 @@ sources:
         Mtime AS MTime, 
         Atime AS ATime, 
         Ctime AS CTime,
-        "Dropper location file" AS FileType,
-        if(condition=Upload_File,
-            then=upload(file=OSPath)) AS Upload,
-        if(condition=Calculate_Hash,
-            then=hash(path=OSPath)) AS Hash
+        "Dropper location file" AS FileType
     FROM glob(
         globs=(
           "/tmp/**",
@@ -282,17 +212,10 @@ sources:
         accessor="file", 
         nosymlink=false
     )
-    WHERE NOT IsDir AND 
-        if(condition=MoreRecentThan,
-            then=if(condition=ModifiedBefore,
-                    then=Mtime > MoreRecentThan AND Mtime < ModifiedBefore,
-                    else=Mtime > MoreRecentThan),
-            else=if(condition=ModifiedBefore,
-                    then=Mtime < ModifiedBefore,
-                    else=TRUE))
+    WHERE NOT IsDir
     
     -- Find executable files in writable dirs
-    SELECT 
+    LET executable_files = SELECT 
         OSPath, 
         Sys.mft as Inode, 
         Mode.String AS Mode, 
@@ -300,11 +223,7 @@ sources:
         Mtime AS MTime, 
         Atime AS ATime, 
         Ctime AS CTime,
-        "Executable in writable dir" AS FileType,
-        if(condition=Upload_File,
-            then=upload(file=OSPath)) AS Upload,
-        if(condition=Calculate_Hash,
-            then=hash(path=OSPath)) AS Hash
+        "Executable in writable dir" AS FileType
     FROM glob(
         globs=(
           "/home/**",
@@ -317,17 +236,10 @@ sources:
         accessor="file", 
         nosymlink=false
     )
-    WHERE NOT IsDir AND Mode.Permissions.Executable AND Mode.Permissions.OtherWrite AND
-        if(condition=MoreRecentThan,
-            then=if(condition=ModifiedBefore,
-                    then=Mtime > MoreRecentThan AND Mtime < ModifiedBefore,
-                    else=Mtime > MoreRecentThan),
-            else=if(condition=ModifiedBefore,
-                    then=Mtime < ModifiedBefore,
-                    else=TRUE))
+    WHERE NOT IsDir AND Mode.Permissions.Executable AND Mode.Permissions.OtherWrite
     
     -- Find ELF binaries
-    SELECT
+    LET elf_files = SELECT
         OSPath, 
         Sys.mft as Inode, 
         Mode.String AS Mode, 
@@ -335,11 +247,7 @@ sources:
         Mtime AS MTime, 
         Atime AS ATime, 
         Ctime AS CTime,
-        "ELF binary" AS FileType,
-        if(condition=Upload_File,
-            then=upload(file=OSPath)) AS Upload,
-        if(condition=Calculate_Hash,
-            then=hash(path=OSPath)) AS Hash
+        "ELF binary" AS FileType
     FROM glob(
         globs=(
           "/home/**",
@@ -355,21 +263,59 @@ sources:
         nosymlink=false
     )
     WHERE NOT IsDir AND Mode.Permissions.Executable AND 
-          read_file(filename=OSPath, length=4, offset=0) =~ '^\\x7fELF' AND
+          read_file(filename=OSPath, length=4, offset=0) =~ '^\\x7fELF'
+    
+    -- Create a separate source for each file type
+    LET all_sources = SELECT * FROM foreach(
+        row={
+            SELECT "shell_scripts" AS source FROM scope()
+            SELECT "python_scripts" AS source FROM scope()
+            SELECT "perl_scripts" AS source FROM scope()
+            SELECT "web_shells" AS source FROM scope()
+            SELECT "jar_files" AS source FROM scope()
+            SELECT "kernel_modules" AS source FROM scope()
+            SELECT "dropper_files" AS source FROM scope()
+            SELECT "executable_files" AS source FROM scope()
+            SELECT "elf_files" AS source FROM scope()
+        },
+        query={
+            SELECT * FROM switch(
+                a=source,
+                shell_scripts=shell_scripts,
+                python_scripts=python_scripts,
+                perl_scripts=perl_scripts,
+                web_shells=web_shells,
+                jar_files=jar_files,
+                kernel_modules=kernel_modules,
+                dropper_files=dropper_files,
+                executable_files=executable_files,
+                elf_files=elf_files
+            )
+        }
+    )
+    
+    -- Apply time filters
+    LET filtered_results = SELECT * FROM all_sources WHERE
         if(condition=MoreRecentThan,
             then=if(condition=ModifiedBefore,
-                    then=Mtime > MoreRecentThan AND Mtime < ModifiedBefore,
-                    else=Mtime > MoreRecentThan),
+                    then=MTime > MoreRecentThan AND MTime < ModifiedBefore,
+                    else=MTime > MoreRecentThan),
             else=if(condition=ModifiedBefore,
-                    then=Mtime < ModifiedBefore,
+                    then=MTime < ModifiedBefore,
                     else=TRUE))
-
-column_types:
-  - name: ATime
-    type: timestamp
-  - name: MTime
-    type: timestamp
-  - name: CTime
-    type: timestamp
-  - name: Upload
-    type: preview_upload
+    
+    -- Final output with upload and hash options
+    SELECT 
+        OSPath, 
+        Inode, 
+        Mode, 
+        Size, 
+        ATime,
+        MTime, 
+        CTime,
+        FileType,
+        if(condition=Upload_File,
+            then=upload(file=OSPath)) AS Upload,
+        if(condition=Calculate_Hash,
+            then=hash(path=OSPath)) AS Hash
+    FROM filtered_results
