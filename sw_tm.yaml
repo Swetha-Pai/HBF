@@ -1,84 +1,298 @@
-name: Linux.Detection.MultiTypeMalwareHunt
-type: CLIENT
+name: Custom.Linux.MaliciousFileFinder
 description: |
-  Hunt for potential Linux malware files:
-   - ELF binaries and shared objects (.elf, .bin, .so, .ko)
-   - Scripts (.sh, .py, .pl)
-   - Web shells (.php, .jsp)
-   - Java archives (.jar)
-   - Any executable in /tmp, /var/tmp, /home, /var/www not owned by root
-precondition: |
-  SELECT OS FROM info() WHERE OS = 'Linux'
+  Find potentially malicious files on Linux systems including:
+  - ELF binaries (native executables)
+  - Shell/Python/Perl scripts
+  - Java JAR files
+  - Malicious web shells (.php, .jsp, etc.)
+  - Kernel modules (.ko)
+  - Suspicious files in common dropper locations
+  - Files with executable permissions in user-writable directories
+
+precondition:
+  SELECT * FROM info() where OS = 'linux'
+
+parameters:
+  - name: Upload_File
+    default: N
+    type: bool
+
+  - name: Calculate_Hash
+    default: N
+    type: bool
+
+  - name: MoreRecentThan
+    default: ""
+    type: timestamp
+
+  - name: ModifiedBefore
+    default: ""
+    type: timestamp
+
+  - name: ExcludePathRegex
+    default: "^/(proc|sys|run|snap)"
+    type: regex
+    description: Exclude system paths.
+
 sources:
-  - name: MultiTypeMalwareFinder
-    precondition: ""
-    queries:
-      - |
-        LET base_query = SELECT * FROM Custom.Linux.Search.FileFinder(
-          SearchFilesGlob="",
-          SearchFilesGlobTable='''
-        Glob
-        /usr/bin/**/*.elf
-        /usr/local/bin/**/*.elf
-        /usr/bin/**/*.bin
-        /usr/local/bin/**/*.bin
-        /usr/bin/**/*.so
-        /usr/local/bin/**/*.so
-        /usr/bin/**/*.ko
-        /usr/local/bin/**/*.ko
-        /usr/bin/**/*.sh
-        /usr/bin/**/*.py
-        /usr/bin/**/*.pl
-        /usr/bin/**/*.php
-        /usr/bin/**/*.jsp
-        /usr/bin/**/*.jar
-        /tmp/**/*
-        /var/tmp/**/*
-        /home/**/*
-        /var/www/**/*
-          ''',
-          YaraRule="",
-          Upload_File="N",
-          Calculate_Hash="Y",
-          MoreRecentThan="",
-          ModifiedBefore="",
-          ExcludePathRegex="^/(proc|sys|run|snap)",
-          LocalFilesystemOnly="Y",
-          OneFilesystem="N",
-          DoNotFollowSymlinks="Y"
-        )
-        
-        LET malware_extensions = dict(
-          elf=TRUE, bin=TRUE, so=TRUE, ko=TRUE,
-          sh=TRUE, py=TRUE, pl=TRUE,
-          php=TRUE, jsp=TRUE, jar=TRUE
-        )
-        
-        SELECT
-          OSPath                AS Path,
-          OSPath.Basename()     AS Name,
-          OSPath.Extension()    AS Ext,
-          Mode                  AS Perms,
-          Hash.MD5              AS MD5,
-          Hash.SHA1             AS SHA1,
-          Hash.SHA256           AS SHA256,
-          MTime                 AS MTime,
-          stat.uid              AS UID,
-          if(condition= OSPath.Extension() in malware_extensions,
-             then="known_extension",
-             else=if(condition= Mode =~ "x" AND stat.uid != 0 AND 
-                    (OSPath.Dirname() =~ "^/tmp/" OR 
-                     OSPath.Dirname() =~ "^/var/tmp/" OR 
-                     OSPath.Dirname() =~ "^/home/" OR 
-                     OSPath.Dirname() =~ "^/var/www/"),
-                    then="dropped_executable",
-                    else="other")) AS Reason
-        FROM base_query
-        WHERE 
-          OSPath.Extension() in malware_extensions
-          OR
-          (Mode =~ "x" AND stat.uid != 0 AND 
-           (OSPath.Dirname() =~ "^/tmp/" OR 
-            OSPath.Dirname() =~ "^/var/tmp/" OR 
-            OSPath.Dirname() =~ "^/home/" OR 
-            OSPath.Dirname() =~ "^/var/www/"))
+- query: |
+    LET LocalDeviceMajor <= (253,7,8,9,11,65,66,67,68,69,70,71,128,129,130,131,132,133,134,135,202,253,254,259)
+
+    LET RecursionCallback = if(
+        condition=ExcludePathRegex,
+        then="x=>x.Data.DevMajor IN LocalDeviceMajor AND NOT x.OSPath =~ ExcludePathRegex",
+        else="x=>x.Data.DevMajor IN LocalDeviceMajor")
+
+    -- Scripts and executables in standard locations
+    LET script_globs = (
+      "/home/**/*.sh",
+      "/home/**/*.py",
+      "/home/**/*.pl",
+      "/usr/local/bin/*.sh",
+      "/usr/local/bin/*.py",
+      "/usr/local/bin/*.pl",
+      "/usr/bin/*.sh",
+      "/usr/bin/*.py",
+      "/usr/bin/*.pl",
+      "/opt/**/*.sh",
+      "/opt/**/*.py",
+      "/opt/**/*.pl"
+    )
+    
+    -- Web shells in web directories
+    LET webshell_globs = (
+      "/var/www/**/*.php",
+      "/var/www/**/*.jsp",
+      "/var/www/**/*.asp",
+      "/var/www/**/*.aspx",
+      "/var/www/**/*.cgi",
+      "/usr/share/nginx/**/*.php",
+      "/usr/share/nginx/**/*.jsp",
+      "/usr/share/apache*/**/*.php",
+      "/usr/share/apache*/**/*.jsp"
+    )
+    
+    -- Java JAR files
+    LET jar_globs = (
+      "/home/**/*.jar",
+      "/opt/**/*.jar",
+      "/usr/local/**/*.jar",
+      "/var/www/**/*.jar"
+    )
+    
+    -- Kernel modules
+    LET kernel_module_globs = (
+      "/lib/modules/**/*.ko",
+      "/usr/lib/modules/**/*.ko",
+      "/home/**/*.ko"
+    )
+    
+    -- Common dropper locations
+    LET dropper_location_globs = (
+      "/tmp/**",
+      "/var/tmp/**",
+      "/dev/shm/**"
+    )
+    
+    -- Find files with executable permissions in user-writable directories
+    LET executable_files = SELECT 
+        OSPath,
+        Sys.mft as Inode,
+        Mode.String AS Mode, 
+        Size,
+        Mtime AS MTime,
+        Atime AS ATime,
+        Ctime AS CTime,
+        IsDir, 
+        Mode, 
+        Data,
+        "Executable in writable dir" AS FileType
+    FROM glob(
+        globs=(
+          "/home/**",
+          "/tmp/**",
+          "/var/tmp/**",
+          "/dev/shm/**"
+        ),
+        recursion_callback=RecursionCallback,
+        one_filesystem=false,
+        accessor="file", 
+        nosymlink=false
+    )
+    WHERE NOT IsDir AND Mode.Permissions.Executable AND Mode.Permissions.OtherWrite
+    
+    -- Find shell scripts
+    LET shell_scripts = SELECT 
+        OSPath, Sys.mft as Inode, Mode.String AS Mode, Size,
+        Mtime AS MTime, Atime AS ATime, Ctime AS CTime,
+        IsDir, Mode, Data, "Shell script" AS FileType
+    FROM glob(
+        globs=script_globs,
+        recursion_callback=RecursionCallback,
+        one_filesystem=false,
+        accessor="file", 
+        nosymlink=false
+    )
+    WHERE OSPath =~ '.*\\.sh$' AND NOT IsDir
+    
+    -- Find python scripts
+    LET python_scripts = SELECT 
+        OSPath, Sys.mft as Inode, Mode.String AS Mode, Size,
+        Mtime AS MTime, Atime AS ATime, Ctime AS CTime,
+        IsDir, Mode, Data, "Python script" AS FileType
+    FROM glob(
+        globs=script_globs,
+        recursion_callback=RecursionCallback,
+        one_filesystem=false,
+        accessor="file", 
+        nosymlink=false
+    )
+    WHERE OSPath =~ '.*\\.py$' AND NOT IsDir
+    
+    -- Find perl scripts
+    LET perl_scripts = SELECT 
+        OSPath, Sys.mft as Inode, Mode.String AS Mode, Size,
+        Mtime AS MTime, Atime AS ATime, Ctime AS CTime,
+        IsDir, Mode, Data, "Perl script" AS FileType
+    FROM glob(
+        globs=script_globs,
+        recursion_callback=RecursionCallback,
+        one_filesystem=false,
+        accessor="file", 
+        nosymlink=false
+    )
+    WHERE OSPath =~ '.*\\.pl$' AND NOT IsDir
+    
+    -- Find web shells
+    LET web_shells = SELECT 
+        OSPath, Sys.mft as Inode, Mode.String AS Mode, Size,
+        Mtime AS MTime, Atime AS ATime, Ctime AS CTime,
+        IsDir, Mode, Data, "Web shell" AS FileType
+    FROM glob(
+        globs=webshell_globs,
+        recursion_callback=RecursionCallback,
+        one_filesystem=false,
+        accessor="file", 
+        nosymlink=false
+    )
+    WHERE OSPath =~ '.*\\.(php|jsp|asp|aspx|cgi)$' AND NOT IsDir
+    
+    -- Find JAR files
+    LET jar_files = SELECT 
+        OSPath, Sys.mft as Inode, Mode.String AS Mode, Size,
+        Mtime AS MTime, Atime AS ATime, Ctime AS CTime,
+        IsDir, Mode, Data, "Java JAR" AS FileType
+    FROM glob(
+        globs=jar_globs,
+        recursion_callback=RecursionCallback,
+        one_filesystem=false,
+        accessor="file", 
+        nosymlink=false
+    )
+    WHERE OSPath =~ '.*\\.jar$' AND NOT IsDir
+    
+    -- Find kernel modules
+    LET kernel_modules = SELECT 
+        OSPath, Sys.mft as Inode, Mode.String AS Mode, Size,
+        Mtime AS MTime, Atime AS ATime, Ctime AS CTime,
+        IsDir, Mode, Data, "Kernel module" AS FileType
+    FROM glob(
+        globs=kernel_module_globs,
+        recursion_callback=RecursionCallback,
+        one_filesystem=false,
+        accessor="file", 
+        nosymlink=false
+    )
+    WHERE OSPath =~ '.*\\.ko$' AND NOT IsDir
+    
+    -- Find files in dropper locations
+    LET dropper_files = SELECT 
+        OSPath, Sys.mft as Inode, Mode.String AS Mode, Size,
+        Mtime AS MTime, Atime AS ATime, Ctime AS CTime,
+        IsDir, Mode, Data, "Dropper location file" AS FileType
+    FROM glob(
+        globs=dropper_location_globs,
+        recursion_callback=RecursionCallback,
+        one_filesystem=false,
+        accessor="file", 
+        nosymlink=false
+    )
+    WHERE NOT IsDir
+    
+    -- Find ELF binaries
+    LET elf_files = SELECT
+        OSPath,
+        Sys.mft as Inode,
+        Mode.String AS Mode, 
+        Size,
+        Mtime AS MTime,
+        Atime AS ATime,
+        Ctime AS CTime,
+        IsDir, 
+        Mode, 
+        Data,
+        "ELF binary" AS FileType
+    FROM glob(
+        globs=(
+          "/home/**",
+          "/usr/local/bin/*",
+          "/usr/local/sbin/*",
+          "/tmp/**",
+          "/var/tmp/**",
+          "/dev/shm/**"
+        ),
+        recursion_callback=RecursionCallback,
+        one_filesystem=false,
+        accessor="file", 
+        nosymlink=false
+    )
+    WHERE NOT IsDir AND Mode.Permissions.Executable AND 
+          read_file(filename=OSPath, length=4, offset=0) =~ '^\\x7fELF'
+    
+    -- Combine all results using array concatenation instead of UNION
+    LET combined_results = shell_scripts + 
+                           python_scripts + 
+                           perl_scripts + 
+                           web_shells + 
+                           jar_files + 
+                           kernel_modules + 
+                           dropper_files + 
+                           executable_files + 
+                           elf_files
+    
+    -- Apply time filters
+    LET more_recent = SELECT * FROM if(
+        condition=MoreRecentThan,
+        then={ SELECT * FROM combined_results WHERE MTime > MoreRecentThan },
+        else=combined_results)
+
+    LET modified_before = SELECT * FROM if(
+        condition=ModifiedBefore,
+        then={ SELECT * FROM more_recent WHERE MTime < ModifiedBefore },
+        else=more_recent)
+
+    -- Final results with upload and hash options
+    SELECT 
+        OSPath, 
+        Inode, 
+        Mode, 
+        Size, 
+        ATime,
+        MTime, 
+        CTime,
+        FileType,
+        if(condition=Upload_File and Mode.IsRegular,
+            then=upload(file=OSPath)) AS Upload,
+        if(condition=Calculate_Hash and Mode.IsRegular,
+            then=hash(path=OSPath)) AS Hash
+    FROM modified_before
+
+column_types:
+  - name: ATime
+    type: timestamp
+  - name: MTime
+    type: timestamp
+  - name: CTime
+    type: timestamp
+  - name: Upload
+    type: preview_upload
