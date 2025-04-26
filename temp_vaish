@@ -1,3 +1,52 @@
+rule Suspicious_ELF_Binary
+{
+    meta:
+        description = "Detects ELF binaries that could be malicious"
+        mitre_ttp = "T1204.002, T1059"
+
+    strings:
+        $a = { 7F 45 4C 46 }      // ELF magic header
+        $b = "/bin/sh" ascii nocase
+        $c = "socket" ascii
+        $d = "connect" ascii
+        $e = "execve" ascii
+
+    condition:
+        $a at 0 and (#b + #c + #d + #e) > 2
+}
+
+rule Possible_Encrypted_File
+{
+    meta:
+        description = "Flags files with known ransomware extensions"
+        mitre_ttp = "T1486"
+
+    condition:
+        filename matches /\.enc$/ or
+        filename matches /\.locked$/ or
+        filename matches /\.crypted$/
+}
+
+rule Suspicious_Shell_Script
+{
+    meta:
+        description = "Detects shell scripts containing dangerous commands"
+        mitre_ttp = "T1059.004"
+
+    strings:
+        $a = "nc -e" ascii
+        $b = "bash -i" ascii
+        $c = "0<&196;exec 196<>/dev/tcp/" ascii
+        $d = "/bin/bash -i >& /dev/tcp/" ascii
+        $e = "curl " ascii
+        $f = "wget " ascii
+
+    condition:
+        (any of ($a,$b,$c,$d)) or (all of ($e,$f))
+}
+
+
+
 name: Custom.Linux.Search.FileFinder
 description: |
   Find files on the filesystem using the filename or content.
