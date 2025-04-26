@@ -1,6 +1,6 @@
 name: Custom.Linux.Search.FileFinder
 description: |
-  Find shell scripts (.sh) and Python files (.py) on the filesystem.
+  Find .sh and .py files on Linux systems (static filesystem config).
 
 precondition:
   SELECT * FROM info() where OS = 'linux'
@@ -8,6 +8,7 @@ precondition:
 parameters:
   - name: SearchFilesGlobTable
     type: csv
+    static: true
     default: |
       Glob
       /home/**/*.sh
@@ -18,12 +19,7 @@ parameters:
       /usr/bin/*.py
       /opt/**/*.sh
       /opt/**/*.py
-    description: Multiple globs for .sh and .py files.
-
-  - name: YaraRule
-    type: yara
-    default:
-    description: Yara rule for content matching.
+    description: Predefined search locations.
 
   - name: Upload_File
     default: N
@@ -44,36 +40,18 @@ parameters:
   - name: ExcludePathRegex
     default: "^/(proc|sys|run|snap)"
     type: regex
-    description: Exclude paths matching this regex.
-
-  - name: LocalFilesystemOnly
-    default: Y
-    type: bool
-    description: Restrict to local filesystems.
-
-  - name: OneFilesystem
-    default: N
-    type: bool
-    description: Avoid crossing filesystem boundaries.
-
-  - name: DoNotFollowSymlinks
-    type: bool
-    default: N
-    description: Follow symlinks during search.
+    description: Exclude system paths.
 
 sources:
 - query: |
-    LET LocalDeviceMajor <= (
-       253,7,8,9,11,65,66,67,68,69,70,71,128,129,130,131,132,133,134,135,202,253,254,259)
+    LET LocalDeviceMajor <= (253,7,8,9,11,65,66,67,68,69,70,71,128,129,130,131,132,133,134,135,202,253,254,259)
 
+    -- Static configuration:
+    -- LocalFilesystemOnly=true, OneFilesystem=false, DoNotFollowSymlinks=false
     LET RecursionCallback = if(
-        condition=LocalFilesystemOnly,
-        then=if(condition=ExcludePathRegex,
-                then="x=>x.Data.DevMajor IN LocalDeviceMajor AND NOT x.OSPath =~ ExcludePathRegex",
-                else="x=>x.Data.DevMajor IN LocalDeviceMajor"),
-        else=if(condition=ExcludePathRegex,
-                then="x=>NOT x.OSPath =~ ExcludePathRegex",
-                else=""))
+        condition=ExcludePathRegex,
+        then="x=>x.Data.DevMajor IN LocalDeviceMajor AND NOT x.OSPath =~ ExcludePathRegex",
+        else="x=>x.Data.DevMajor IN LocalDeviceMajor")
 
     LET file_search = SELECT 
         OSPath,
@@ -89,48 +67,21 @@ sources:
     FROM glob(
         globs=SearchFilesGlobTable.Glob,
         recursion_callback=RecursionCallback,
-        one_filesystem=OneFilesystem,
+        one_filesystem=false,    -- Hardcoded N
         accessor="file", 
-        nosymlink=DoNotFollowSymlinks
+        nosymlink=false          -- Hardcoded N
     )
     WHERE OSPath =~ '.*\.(sh|py)$'
 
     LET more_recent = SELECT * FROM if(
         condition=MoreRecentThan,
         then={ SELECT * FROM file_search WHERE MTime > MoreRecentThan },
-        else={ SELECT * FROM file_search })
+        else=file_search)
 
     LET modified_before = SELECT * FROM if(
         condition=ModifiedBefore,
         then={ SELECT * FROM more_recent WHERE MTime < ModifiedBefore },
-        else={ SELECT * FROM more_recent })
-
-    LET keyword_search = SELECT * FROM if(
-        condition=YaraRule,
-        then={
-            SELECT * FROM foreach(
-                row={ SELECT * FROM modified_before WHERE Mode.IsRegular },
-                query={
-                    SELECT 
-                        OSPath, 
-                        Inode, 
-                        Mode,
-                        Size, 
-                        ATime, 
-                        MTime, 
-                        CTime,
-                        str(str=String.Data) As Keywords
-                    FROM yara(
-                        files=OSPath,
-                        key="A",
-                        rules=YaraRule,
-                        accessor="file"
-                    )
-                })
-        },
-        else={
-            SELECT *, NULL AS Keywords FROM modified_before
-        })
+        else=more_recent)
 
     SELECT 
         OSPath, 
@@ -139,13 +90,12 @@ sources:
         Size, 
         ATime,
         MTime, 
-        CTime, 
-        Keywords,
+        CTime,
         if(condition=Upload_File and Mode.IsRegular,
-            then=upload(file=OSPath, accessor="file")) AS Upload,
+            then=upload(file=OSPath)) AS Upload,
         if(condition=Calculate_Hash and Mode.IsRegular,
-            then=hash(path=OSPath, accessor="file")) AS Hash
-    FROM keyword_search
+            then=hash(path=OSPath)) AS Hash
+    FROM modified_before
 
 column_types:
   - name: ATime
