@@ -54,42 +54,63 @@ parameters:
   - name: CommonExtensions
     type: csv
     default: |
-      Extension
-      exe
-      dll
-      docx
-      xlsx
-      pdf
-      txt
-      jpg
-      png
-      zip
-      mp3
-      mp4
-      html
-      js
-      json
-      xml
-      csv
-      log
-      bat
+     Extension
       sh
-      py
-      c
-      cpp
-      java
-      rb
-      go
-      ts
-      php
-      ps1
-      sql
-      ini
+      bash
       conf
       cfg
-      yml
+      ini
+      service
+      log
+      sock
+      pid
+      out
+      bin
+      so
+      deb
+      rpm
+      gz
+      bz2
+      xz
+      tar
+      tgz
+      zip
+      zst
+      zsh
+      c
+      cpp
+      h
+      o
+      py
+      pl
+      rb
+      go
+      js
+      ts
+      json
       yaml
+      yml
+      xml
       md
+      txt
+      sql
+      db
+      sqlite
+      html
+      css
+      jpg
+      jpeg
+      png
+      gif
+      mp4
+      mp3
+      mpg
+      avi
+      mov
+      pdf
+      odt
+      ods
+      odp
     description: List of common file extensions to exclude.
 
 sources:
