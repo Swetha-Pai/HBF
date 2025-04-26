@@ -57,6 +57,7 @@ parameters:
      Extension
       sh
       bash
+      zsh
       conf
       cfg
       ini
@@ -67,6 +68,14 @@ parameters:
       out
       bin
       so
+      ko
+      mod
+      kmod
+      rules
+      udev
+      mount
+      fstab
+      sysctl
       deb
       rpm
       gz
@@ -76,7 +85,6 @@ parameters:
       tgz
       zip
       zst
-      zsh
       c
       cpp
       h
@@ -96,21 +104,51 @@ parameters:
       sql
       db
       sqlite
+      pem
+      crt
+      key
+      csr
+      pub
+      passwd
+      group
+      shadow
+      hosts
+      resolv
+      hostname
+      nsswitch
+      bashrc
+      profile
+      bash_profile
+      ld_so_conf
+      ld_so_cache
       html
       css
       jpg
       jpeg
       png
       gif
+      svg
       mp4
       mp3
       mpg
       avi
       mov
+      flac
       pdf
       odt
       ods
       odp
+      desktop
+      mime
+      locale
+      mount
+      fstab
+      vmlinuz
+      initrd
+      swap
+      tmp
+      cache
+      bak
     description: List of common file extensions to exclude.
 
 sources:
