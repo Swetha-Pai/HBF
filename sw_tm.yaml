@@ -43,118 +43,335 @@ sources:
         then="x=>x.Data.DevMajor IN LocalDeviceMajor AND NOT x.OSPath =~ ExcludePathRegex",
         else="x=>x.Data.DevMajor IN LocalDeviceMajor")
 
+    -- Find shell scripts
     LET shell_scripts = SELECT 
-        OSPath, Sys.mft as Inode, Mode.String AS Mode, Size,
-        Mtime AS MTime, Atime AS ATime, Ctime AS CTime,
+        OSPath, 
+        Sys.mft as Inode, 
+        Mode.String AS Mode, 
+        Size,
+        Mtime AS MTime, 
+        Atime AS ATime, 
+        Ctime AS CTime,
         "Shell script" AS FileType
     FROM glob(
-        globs=("/home/**/*.sh","/usr/local/bin/*.sh","/usr/bin/*.sh","/opt/**/*.sh"),
-        recursion_callback=RecursionCallback, one_filesystem=false, accessor="file", nosymlink=false
+        globs=(
+          "/home/**/*.sh",
+          "/usr/local/bin/*.sh",
+          "/usr/bin/*.sh",
+          "/opt/**/*.sh"
+        ),
+        recursion_callback=RecursionCallback,
+        one_filesystem=false,
+        accessor="file", 
+        nosymlink=false
     )
     WHERE NOT IsDir
-
+    
+    -- Find python scripts
     LET python_scripts = SELECT 
-        OSPath, Sys.mft as Inode, Mode.String AS Mode, Size,
-        Mtime AS MTime, Atime AS ATime, Ctime AS CTime,
+        OSPath, 
+        Sys.mft as Inode, 
+        Mode.String AS Mode, 
+        Size,
+        Mtime AS MTime, 
+        Atime AS ATime, 
+        Ctime AS CTime,
         "Python script" AS FileType
     FROM glob(
-        globs=("/home/**/*.py","/usr/local/bin/*.py","/usr/bin/*.py","/opt/**/*.py"),
-        recursion_callback=RecursionCallback, one_filesystem=false, accessor="file", nosymlink=false
+        globs=(
+          "/home/**/*.py",
+          "/usr/local/bin/*.py",
+          "/usr/bin/*.py",
+          "/opt/**/*.py"
+        ),
+        recursion_callback=RecursionCallback,
+        one_filesystem=false,
+        accessor="file", 
+        nosymlink=false
     )
     WHERE NOT IsDir
-
+    
+    -- Find perl scripts
     LET perl_scripts = SELECT 
-        OSPath, Sys.mft as Inode, Mode.String AS Mode, Size,
-        Mtime AS MTime, Atime AS ATime, Ctime AS CTime,
+        OSPath, 
+        Sys.mft as Inode, 
+        Mode.String AS Mode, 
+        Size,
+        Mtime AS MTime, 
+        Atime AS ATime, 
+        Ctime AS CTime,
         "Perl script" AS FileType
     FROM glob(
-        globs=("/home/**/*.pl","/usr/local/bin/*.pl","/usr/bin/*.pl","/opt/**/*.pl"),
-        recursion_callback=RecursionCallback, one_filesystem=false, accessor="file", nosymlink=false
+        globs=(
+          "/home/**/*.pl",
+          "/usr/local/bin/*.pl",
+          "/usr/bin/*.pl",
+          "/opt/**/*.pl"
+        ),
+        recursion_callback=RecursionCallback,
+        one_filesystem=false,
+        accessor="file", 
+        nosymlink=false
     )
     WHERE NOT IsDir
-
+    
+    -- Find web shells
     LET web_shells = SELECT 
-        OSPath, Sys.mft as Inode, Mode.String AS Mode, Size,
-        Mtime AS MTime, Atime AS ATime, Ctime AS CTime,
+        OSPath, 
+        Sys.mft as Inode, 
+        Mode.String AS Mode, 
+        Size,
+        Mtime AS MTime, 
+        Atime AS ATime, 
+        Ctime AS CTime,
         "Web shell" AS FileType
     FROM glob(
         globs=(
-          "/var/www/**/*.php","/var/www/**/*.jsp","/var/www/**/*.asp","/var/www/**/*.aspx","/var/www/**/*.cgi",
-          "/usr/share/nginx/**/*.php","/usr/share/nginx/**/*.jsp","/usr/share/apache*/**/*.php","/usr/share/apache*/**/*.jsp"
+          "/var/www/**/*.php",
+          "/var/www/**/*.jsp",
+          "/var/www/**/*.asp",
+          "/var/www/**/*.aspx",
+          "/var/www/**/*.cgi",
+          "/usr/share/nginx/**/*.php",
+          "/usr/share/nginx/**/*.jsp",
+          "/usr/share/apache*/**/*.php",
+          "/usr/share/apache*/**/*.jsp"
         ),
-        recursion_callback=RecursionCallback, one_filesystem=false, accessor="file", nosymlink=false
+        recursion_callback=RecursionCallback,
+        one_filesystem=false,
+        accessor="file", 
+        nosymlink=false
     )
     WHERE NOT IsDir
-
+    
+    -- Find JAR files
     LET jar_files = SELECT 
-        OSPath, Sys.mft as Inode, Mode.String AS Mode, Size,
-        Mtime AS MTime, Atime AS ATime, Ctime AS CTime,
+        OSPath, 
+        Sys.mft as Inode, 
+        Mode.String AS Mode, 
+        Size,
+        Mtime AS MTime, 
+        Atime AS ATime, 
+        Ctime AS CTime,
         "Java JAR" AS FileType
     FROM glob(
-        globs=("/home/**/*.jar","/opt/**/*.jar","/usr/local/**/*.jar","/var/www/**/*.jar"),
-        recursion_callback=RecursionCallback, one_filesystem=false, accessor="file", nosymlink=false
+        globs=(
+          "/home/**/*.jar",
+          "/opt/**/*.jar",
+          "/usr/local/**/*.jar",
+          "/var/www/**/*.jar"
+        ),
+        recursion_callback=RecursionCallback,
+        one_filesystem=false,
+        accessor="file", 
+        nosymlink=false
     )
     WHERE NOT IsDir
-
+    
+    -- Find kernel modules
     LET kernel_modules = SELECT 
-        OSPath, Sys.mft as Inode, Mode.String AS Mode, Size,
-        Mtime AS MTime, Atime AS ATime, Ctime AS CTime,
+        OSPath, 
+        Sys.mft as Inode, 
+        Mode.String AS Mode, 
+        Size,
+        Mtime AS MTime, 
+        Atime AS ATime, 
+        Ctime AS CTime,
         "Kernel module" AS FileType
     FROM glob(
-        globs=("/lib/modules/**/*.ko","/usr/lib/modules/**/*.ko","/home/**/*.ko"),
-        recursion_callback=RecursionCallback, one_filesystem=false, accessor="file", nosymlink=false
+        globs=(
+          "/lib/modules/**/*.ko",
+          "/usr/lib/modules/**/*.ko",
+          "/home/**/*.ko"
+        ),
+        recursion_callback=RecursionCallback,
+        one_filesystem=false,
+        accessor="file", 
+        nosymlink=false
     )
     WHERE NOT IsDir
-
+    
+    -- Find files in dropper locations
     LET dropper_files = SELECT 
-        OSPath, Sys.mft as Inode, Mode.String AS Mode, Size,
-        Mtime AS MTime, Atime AS ATime, Ctime AS CTime,
+        OSPath, 
+        Sys.mft as Inode, 
+        Mode.String AS Mode, 
+        Size,
+        Mtime AS MTime, 
+        Atime AS ATime, 
+        Ctime AS CTime,
         "Dropper location file" AS FileType
     FROM glob(
-        globs=("/tmp/**","/var/tmp/**","/dev/shm/**"),
-        recursion_callback=RecursionCallback, one_filesystem=false, accessor="file", nosymlink=false
+        globs=(
+          "/tmp/**",
+          "/var/tmp/**",
+          "/dev/shm/**"
+        ),
+        recursion_callback=RecursionCallback,
+        one_filesystem=false,
+        accessor="file", 
+        nosymlink=false
     )
     WHERE NOT IsDir
-
+    
+    -- Find executable files in writable dirs
     LET executable_files = SELECT 
-        OSPath, Sys.mft as Inode, Mode.String AS Mode, Size,
-        Mtime AS MTime, Atime AS ATime, Ctime AS CTime,
+        OSPath, 
+        Sys.mft as Inode, 
+        Mode.String AS Mode, 
+        Size,
+        Mtime AS MTime, 
+        Atime AS ATime, 
+        Ctime AS CTime,
         "Executable in writable dir" AS FileType
     FROM glob(
-        globs=("/home/**","/tmp/**","/var/tmp/**","/dev/shm/**"),
-        recursion_callback=RecursionCallback, one_filesystem=false, accessor="file", nosymlink=false
+        globs=(
+          "/home/**",
+          "/tmp/**",
+          "/var/tmp/**",
+          "/dev/shm/**"
+        ),
+        recursion_callback=RecursionCallback,
+        one_filesystem=false,
+        accessor="file", 
+        nosymlink=false
     )
     WHERE NOT IsDir AND Mode.Permissions.Executable AND Mode.Permissions.OtherWrite
-
+    
+    -- Find ELF binaries
     LET elf_files = SELECT
-        OSPath, Sys.mft as Inode, Mode.String AS Mode, Size,
-        Mtime AS MTime, Atime AS ATime, Ctime AS CTime,
+        OSPath, 
+        Sys.mft as Inode, 
+        Mode.String AS Mode, 
+        Size,
+        Mtime AS MTime, 
+        Atime AS ATime, 
+        Ctime AS CTime,
         "ELF binary" AS FileType
     FROM glob(
-        globs=("/home/**","/usr/local/bin/*","/usr/local/sbin/*","/tmp/**","/var/tmp/**","/dev/shm/**"),
-        recursion_callback=RecursionCallback, one_filesystem=false, accessor="file", nosymlink=false
+        globs=(
+          "/home/**",
+          "/usr/local/bin/*",
+          "/usr/local/sbin/*",
+          "/tmp/**",
+          "/var/tmp/**",
+          "/dev/shm/**"
+        ),
+        recursion_callback=RecursionCallback,
+        one_filesystem=false,
+        accessor="file", 
+        nosymlink=false
     )
-    WHERE NOT IsDir AND Mode.Permissions.Executable AND read_file(filename=OSPath, length=4, offset=0) =~ '^\\x7fELF'
-
-    LET all_results = chain(
-        a=shell_scripts,
-        b=python_scripts,
-        c=perl_scripts,
-        d=web_shells,
-        e=jar_files,
-        f=kernel_modules,
-        g=dropper_files,
-        h=executable_files,
-        i=elf_files
-    )
-
+    WHERE NOT IsDir AND Mode.Permissions.Executable AND 
+          read_file(filename=OSPath, length=4, offset=0) =~ '^\\x7fELF'
+    
+    -- Process shell scripts with time filtering
+    LET filtered_shell_scripts = SELECT * FROM shell_scripts 
+    WHERE (MoreRecentThan = "" OR MTime > MoreRecentThan) AND 
+          (ModifiedBefore = "" OR MTime < ModifiedBefore)
+    
+    -- Process python scripts with time filtering
+    LET filtered_python_scripts = SELECT * FROM python_scripts 
+    WHERE (MoreRecentThan = "" OR MTime > MoreRecentThan) AND 
+          (ModifiedBefore = "" OR MTime < ModifiedBefore)
+    
+    -- Process perl scripts with time filtering
+    LET filtered_perl_scripts = SELECT * FROM perl_scripts 
+    WHERE (MoreRecentThan = "" OR MTime > MoreRecentThan) AND 
+          (ModifiedBefore = "" OR MTime < ModifiedBefore)
+    
+    -- Process web shells with time filtering
+    LET filtered_web_shells = SELECT * FROM web_shells 
+    WHERE (MoreRecentThan = "" OR MTime > MoreRecentThan) AND 
+          (ModifiedBefore = "" OR MTime < ModifiedBefore)
+    
+    -- Process JAR files with time filtering
+    LET filtered_jar_files = SELECT * FROM jar_files 
+    WHERE (MoreRecentThan = "" OR MTime > MoreRecentThan) AND 
+          (ModifiedBefore = "" OR MTime < ModifiedBefore)
+    
+    -- Process kernel modules with time filtering
+    LET filtered_kernel_modules = SELECT * FROM kernel_modules 
+    WHERE (MoreRecentThan = "" OR MTime > MoreRecentThan) AND 
+          (ModifiedBefore = "" OR MTime < ModifiedBefore)
+    
+    -- Process dropper files with time filtering
+    LET filtered_dropper_files = SELECT * FROM dropper_files 
+    WHERE (MoreRecentThan = "" OR MTime > MoreRecentThan) AND 
+          (ModifiedBefore = "" OR MTime < ModifiedBefore)
+    
+    -- Process executable files with time filtering
+    LET filtered_executable_files = SELECT * FROM executable_files 
+    WHERE (MoreRecentThan = "" OR MTime > MoreRecentThan) AND 
+          (ModifiedBefore = "" OR MTime < ModifiedBefore)
+    
+    -- Process ELF files with time filtering
+    LET filtered_elf_files = SELECT * FROM elf_files 
+    WHERE (MoreRecentThan = "" OR MTime > MoreRecentThan) AND 
+          (ModifiedBefore = "" OR MTime < ModifiedBefore)
+    
+    -- Output shell scripts
     SELECT 
         OSPath, Inode, Mode, Size, ATime, MTime, CTime, FileType,
         if(condition=Upload_File, then=upload(file=OSPath)) AS Upload,
         if(condition=Calculate_Hash, then=hash(path=OSPath)) AS Hash
-    FROM all_results
-    WHERE (MoreRecentThan = "" OR MTime > MoreRecentThan)
-      AND (ModifiedBefore = "" OR MTime < ModifiedBefore)
+    FROM filtered_shell_scripts
+
+    -- Output python scripts
+    SELECT 
+        OSPath, Inode, Mode, Size, ATime, MTime, CTime, FileType,
+        if(condition=Upload_File, then=upload(file=OSPath)) AS Upload,
+        if(condition=Calculate_Hash, then=hash(path=OSPath)) AS Hash
+    FROM filtered_python_scripts
+
+    -- Output perl scripts
+    SELECT 
+        OSPath, Inode, Mode, Size, ATime, MTime, CTime, FileType,
+        if(condition=Upload_File, then=upload(file=OSPath)) AS Upload,
+        if(condition=Calculate_Hash, then=hash(path=OSPath)) AS Hash
+    FROM filtered_perl_scripts
+
+    -- Output web shells
+    SELECT 
+        OSPath, Inode, Mode, Size, ATime, MTime, CTime, FileType,
+        if(condition=Upload_File, then=upload(file=OSPath)) AS Upload,
+        if(condition=Calculate_Hash, then=hash(path=OSPath)) AS Hash
+    FROM filtered_web_shells
+
+    -- Output JAR files
+    SELECT 
+        OSPath, Inode, Mode, Size, ATime, MTime, CTime, FileType,
+        if(condition=Upload_File, then=upload(file=OSPath)) AS Upload,
+        if(condition=Calculate_Hash, then=hash(path=OSPath)) AS Hash
+    FROM filtered_jar_files
+
+    -- Output kernel modules
+    SELECT 
+        OSPath, Inode, Mode, Size, ATime, MTime, CTime, FileType,
+        if(condition=Upload_File, then=upload(file=OSPath)) AS Upload,
+        if(condition=Calculate_Hash, then=hash(path=OSPath)) AS Hash
+    FROM filtered_kernel_modules
+
+    -- Output dropper files
+    SELECT 
+        OSPath, Inode, Mode, Size, ATime, MTime, CTime, FileType,
+        if(condition=Upload_File, then=upload(file=OSPath)) AS Upload,
+        if(condition=Calculate_Hash, then=hash(path=OSPath)) AS Hash
+    FROM filtered_dropper_files
+
+    -- Output executable files
+    SELECT 
+        OSPath, Inode, Mode, Size, ATime, MTime, CTime, FileType,
+        if(condition=Upload_File, then=upload(file=OSPath)) AS Upload,
+        if(condition=Calculate_Hash, then=hash(path=OSPath)) AS Hash
+    FROM filtered_executable_files
+
+    -- Output ELF files
+    SELECT 
+        OSPath, Inode, Mode, Size, ATime, MTime, CTime, FileType,
+        if(condition=Upload_File, then=upload(file=OSPath)) AS Upload,
+        if(condition=Calculate_Hash, then=hash(path=OSPath)) AS Hash
+    FROM filtered_elf_files
 
 column_types:
   - name: ATime
