@@ -19,29 +19,30 @@ sources:
       SELECT * FROM foreach(
         row=history_files,
         query={
-          SELECT OSPath,
+          SELECT
+            OSPath,
             Mtime,
             Username,
             Line AS FullCommand,
-            if(
-              condition=Line =~ "(wget|curl)\\s+.*https?://",
-              then=regex_replace(
-                source=Line,
-                re=".*(wget|curl)\\b.*",
-                replace="$1"
-              )
+            regex_replace(
+              source=Line,
+              re=".*(wget|curl)\\b.*",
+              replace="$1"
             ) AS DownloadTool,
-            // Try to extract filename from -O/--output, else from URL
-            coalesce(
-              regex_search(
+            if(
+              condition=Line =~ "(?:-O|--output(?:-document)?)[ =]+([\\w.\\-/\\\\]+)",
+              then=regex_search(
                 source=Line,
-                re="(?:-O|--output(?:-document)?)[ =]+([\\w.\\-/\\\\]+)"
+                re="(?:-O|--output(?:-document)?)[ =]+([\\w.\\-/\\\\]+)",
+                index=1
               ),
-              regex_search(
+              else=regex_search(
                 source=Line,
-                re="https?://[^\\s]+/([^\\s/]+)(?:\\s|$)"
+                re="https?://[^\\s]+/([^\\s/]+)(?:\\s|$)",
+                index=1
               )
             ) AS Filename
           FROM parse_lines(filename=OSPath, accessor="auto")
           WHERE DownloadTool
-        })
+        }
+      )
