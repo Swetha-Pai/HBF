@@ -1,9 +1,9 @@
-name: Custom.Linux.Search.FileFinder
+name: Custom.Linux.Search.BinaryFinder
 description: |
-  Find .sh, .py, .jar files and executable binaries on Linux systems.
+  Find Linux binary executable files (.ELF) by checking executable permissions.
 
 precondition:
-  SELECT * FROM info() WHERE OS = 'linux'
+  SELECT * FROM info() where OS = 'linux'
 
 parameters:
   - name: Upload_File
@@ -31,71 +31,61 @@ sources:
 - query: |
     LET LocalDeviceMajor <= (253,7,8,9,11,65,66,67,68,69,70,71,128,129,130,131,132,133,134,135,202,253,254,259)
 
-    LET static_globs = (
-      "/home/**/*.sh",
-      "/home/**/*.py",
-      "/home/**/*.jar",
+    LET RecursionCallback = if(
+        condition=ExcludePathRegex,
+        then="x=>x.Data.DevMajor IN LocalDeviceMajor AND NOT x.OSPath =~ ExcludePathRegex",
+        else="x=>x.Data.DevMajor IN LocalDeviceMajor")
+
+    LET search_paths = (
+      "/home/**/bin/*",
       "/usr/local/bin/*",
-      "/usr/local/sbin/*",
       "/usr/bin/*",
-      "/usr/sbin/*",
-      "/sbin/*",
-      "/bin/*",
-      "/opt/**/*.sh",
-      "/opt/**/*.py",
-      "/opt/**/*.jar",
-      "/opt/**"
+      "/opt/**/bin/*"
     )
 
     LET file_search = SELECT 
         OSPath,
-        Sys.mft AS Inode,
-        Mode.String AS ModeString,
+        Sys.mft as Inode,
+        Mode.String AS Mode, 
         Size,
         Mtime AS MTime,
         Atime AS ATime,
         Ctime AS CTime,
-        IsDir,
-        Mode,
+        IsDir, 
+        Mode, 
         Data
     FROM glob(
-        globs=static_globs,
-        recursion_callback={
-          x => x.Data.DevMajor IN LocalDeviceMajor
-          AND (NOT x.OSPath.Match(ExcludePathRegex))
-        },
+        globs=search_paths,
+        recursion_callback=RecursionCallback,
         one_filesystem=false,
-        accessor="file",
+        accessor="file", 
         nosymlink=false
     )
-    WHERE (
-        OSPath.Match(r'.*\.(sh|py|jar)$')
-        OR (Mode.IsRegular AND Mode.Execute)
-    )
+    WHERE Mode.IsRegular AND Mode.ExecuteUser
 
-    LET filtered_files = SELECT * FROM file_search
-      WHERE (
-        (MoreRecentThan = "" OR MTime > MoreRecentThan) AND
-        (ModifiedBefore = "" OR MTime < ModifiedBefore)
-      )
+    LET more_recent = SELECT * FROM if(
+        condition=MoreRecentThan,
+        then={ SELECT * FROM file_search WHERE MTime > MoreRecentThan },
+        else=file_search)
+
+    LET modified_before = SELECT * FROM if(
+        condition=ModifiedBefore,
+        then={ SELECT * FROM more_recent WHERE MTime < ModifiedBefore },
+        else=more_recent)
 
     SELECT 
-        OSPath,
-        Inode,
-        ModeString AS Mode,
-        Size,
+        OSPath, 
+        Inode, 
+        Mode, 
+        Size, 
         ATime,
-        MTime,
+        MTime, 
         CTime,
-        if(
-          condition=Upload_File AND Mode.IsRegular,
-          then=upload(file=OSPath)
-        ) AS Upload,
-        if(
-          condition=Calculate_Hash AND Mode.IsRegular,
-          then=hash(path=OSPath)
-        ) AS Hash
-    FROM filtered_files
+        if(condition=Upload_File and Mode.IsRegular,
+            then=upload(file=OSPath)) AS Upload,
+        if(condition=Calculate_Hash and Mode.IsRegular,
+            then=hash(path=OSPath)) AS Hash
+    FROM modified_before
 
 column_types:
   - name: ATime
