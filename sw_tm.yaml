@@ -1,47 +1,44 @@
 name: Custom.Detection.CommandLineDownloads
 description: |
-  Detects wget/curl downloads with or without explicit output flags,
-  including indirect file operations. Adds a column with the downloaded filename.
-
+  Detects wget/curl downloads with or without explicit output flags, including indirect file operations. Adds a column with the downloaded filename.
 parameters:
   - name: HistoryPaths
     default: |
       /home/*/.*_history
       /root/.*_history
       C:\\Users\\*\\AppData\\Roaming\\Microsoft\\Windows\\PowerShell\\*\\History*
-
 sources:
   - query: |
-      LET history_files = SELECT OSPath, Mtime, Username
-        FROM glob(globs=split(string=HistoryPaths, sep="\n"))
-        WHERE Size > 0
-
+      LET history_files = SELECT OSPath,Mtime,Username FROM glob(globs=split(string=HistoryPaths,sep="\n")) WHERE Size>0
       SELECT
         OSPath,
         Mtime,
         Username,
-        Line AS FullCommand,
-        result.tool AS DownloadTool,
-        result.url AS URL,
-        if(result.output != "", result.output,
-          regex_replace(result.url, ".*/([^/?#]+).*", "$1")
+        FullCommand,
+        record.tool AS DownloadTool,
+        record.url AS URL,
+        if(
+          record.output!="",
+          record.output,
+          regex_replace(source=record.url, re=".*/([^/?#]+).*", replace="$1")
         ) AS Filename
       FROM foreach(
         row=history_files,
         query={
           SELECT
-            Line,
+            OSPath,
+            Mtime,
+            Username,
+            Line AS FullCommand,
             parse_string_with_regex(
               string=Line,
               regex=[
-                // wget/curl with -O or --output
-                "(?P<tool>wget|curl)\\s+[^\\n]*?(?:-O|--output(?:-document)?)\\s*(?P<output>\\S+)\\s+[^\\n]*?(?P<url>https?://\\S+)",
-                // wget/curl without output flag
-                "(?P<tool>wget|curl)\\s+[^\\n]*?(?P<url>https?://\\S+)"
+                "(?P<tool>wget|curl)\\s+.*?(?:-O|--output(?:-document)?)\\s*(?P<output>\\S+)\\s+.*?(?P<url>https?://\\S+)",
+                "(?P<tool>wget|curl)\\s+(?P<url>https?://\\S+)"
               ]
-            ) AS result
-          FROM parse_lines(filename=OSPath, accessor="auto")
+            ) AS record
+          FROM parse_lines(filename=OSPath,accessor="auto")
           WHERE Line =~ "\\b(wget|curl)\\b" AND Line =~ "https?://"
         }
       )
-      WHERE DownloadTool != ""
+      WHERE DownloadTool!=""
