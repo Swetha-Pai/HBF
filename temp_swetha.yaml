@@ -153,4 +153,49 @@ sources:
           WHERE MTime < ModifiedBefore
             AND MTime > MoreRecentThan
         }, else={
-          SELECT * FROM
+          SELECT * FROM more_recent
+        })
+
+    -- Only regular executable files
+    LET executables_only = SELECT * FROM modified_before WHERE Mode.IsRegular AND Mode.IsExecutable
+
+    LET keyword_search = SELECT * FROM if(
+        condition=YaraRule,
+        then={
+          SELECT * FROM foreach(
+            row={
+               SELECT * FROM executables_only
+            },
+            query={
+               SELECT OSPath, Inode, Mode,
+                      Size, ATime, MTime, CTime,
+                      str(str=String.Data) As Keywords
+
+               FROM yara(files=OSPath,
+                         key="A",
+                         rules=YaraRule,
+                         accessor="file")
+            })
+        }, else={
+          SELECT *, NULL AS Keywords FROM executables_only
+        })
+
+    SELECT OSPath, Inode, Mode, Size, ATime,
+             MTime, CTime, Keywords,
+               if(condition=Upload_File and Mode.IsRegular,
+                  then=upload(file=OSPath,
+                              accessor="file")) AS Upload,
+               if(condition=Calculate_Hash and Mode.IsRegular,
+                  then=hash(path=OSPath,
+                            accessor="file")) AS Hash
+    FROM keyword_search
+
+column_types:
+  - name: ATime
+    type: timestamp
+  - name: MTime
+    type: timestamp
+  - name: CTime
+    type: timestamp
+  - name: Upload
+    type: preview_upload
