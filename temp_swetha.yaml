@@ -1,26 +1,11 @@
 name: Custom.Linux.Search.FileFinder
 description: |
-  Find .sh and .py files on Linux systems (static filesystem config).
+  Find .sh and .py files on Linux systems.
 
 precondition:
   SELECT * FROM info() where OS = 'linux'
 
 parameters:
-  - name: SearchFilesGlobTable
-    type: csv
-    static: true
-    default: |
-      Glob
-      /home/**/*.sh
-      /home/**/*.py
-      /usr/local/bin/*.sh
-      /usr/local/bin/*.py
-      /usr/bin/*.sh
-      /usr/bin/*.py
-      /opt/**/*.sh
-      /opt/**/*.py
-    description: Predefined search locations.
-
   - name: Upload_File
     default: N
     type: bool
@@ -46,12 +31,21 @@ sources:
 - query: |
     LET LocalDeviceMajor <= (253,7,8,9,11,65,66,67,68,69,70,71,128,129,130,131,132,133,134,135,202,253,254,259)
 
-    -- Static configuration:
-    -- LocalFilesystemOnly=true, OneFilesystem=false, DoNotFollowSymlinks=false
     LET RecursionCallback = if(
         condition=ExcludePathRegex,
         then="x=>x.Data.DevMajor IN LocalDeviceMajor AND NOT x.OSPath =~ ExcludePathRegex",
         else="x=>x.Data.DevMajor IN LocalDeviceMajor")
+
+    LET static_globs = [
+      "/home/**/*.sh",
+      "/home/**/*.py",
+      "/usr/local/bin/*.sh",
+      "/usr/local/bin/*.py",
+      "/usr/bin/*.sh",
+      "/usr/bin/*.py",
+      "/opt/**/*.sh",
+      "/opt/**/*.py"
+    ]
 
     LET file_search = SELECT 
         OSPath,
@@ -65,11 +59,11 @@ sources:
         Mode, 
         Data
     FROM glob(
-        globs=SearchFilesGlobTable.Glob,
+        globs=static_globs,
         recursion_callback=RecursionCallback,
-        one_filesystem=false,    -- Hardcoded N
+        one_filesystem=false,
         accessor="file", 
-        nosymlink=false          -- Hardcoded N
+        nosymlink=false
     )
     WHERE OSPath =~ '.*\.(sh|py)$'
 
