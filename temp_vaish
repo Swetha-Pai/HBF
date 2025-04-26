@@ -1,9 +1,9 @@
-name: Custom.Linux.Search.UncommonExtensions
+name: Custom.Linux.Search.BinaryFiles
 description: |
-  Search all files recursively and return files with uncommon extensions.
+  Search all files recursively and return files that are binary (executables, libraries, etc).
 
 precondition:
-  SELECT * FROM info() where OS = 'linux'
+  SELECT * FROM info() WHERE OS = 'linux'
 
 parameters:
   - name: SearchFilesGlob
@@ -25,23 +25,13 @@ parameters:
     default: N
     type: bool
 
-  - name: MoreRecentThan
-    default: ""
-    type: timestamp
-
-  - name: ModifiedBefore
-    default: ""
-    type: timestamp
-
   - name: ExcludePathRegex
     default: "^/(proc|sys|run|snap)"
     type: regex
-    description: If this regex matches the path of any directory we do not even descend inside of it.
 
   - name: LocalFilesystemOnly
     default: Y
     type: bool
-    description: When set we stay on local attached filesystems only.
 
   - name: OneFilesystem
     default: N
@@ -50,106 +40,6 @@ parameters:
   - name: DoNotFollowSymlinks
     type: bool
     default: N
-
-  - name: CommonExtensions
-    type: csv
-    default: |
-     Extension
-      sh
-      bash
-      zsh
-      conf
-      cfg
-      ini
-      service
-      log
-      sock
-      pid
-      out
-      bin
-      so
-      ko
-      mod
-      kmod
-      rules
-      udev
-      mount
-      fstab
-      sysctl
-      deb
-      rpm
-      gz
-      bz2
-      xz
-      tar
-      tgz
-      zip
-      zst
-      c
-      cpp
-      h
-      o
-      py
-      pl
-      rb
-      go
-      js
-      ts
-      json
-      yaml
-      yml
-      xml
-      md
-      txt
-      sql
-      db
-      sqlite
-      pem
-      crt
-      key
-      csr
-      pub
-      passwd
-      group
-      shadow
-      hosts
-      resolv
-      hostname
-      nsswitch
-      bashrc
-      profile
-      bash_profile
-      ld_so_conf
-      ld_so_cache
-      html
-      css
-      jpg
-      jpeg
-      png
-      gif
-      svg
-      mp4
-      mp3
-      mpg
-      avi
-      mov
-      flac
-      pdf
-      odt
-      ods
-      odp
-      desktop
-      mime
-      locale
-      mount
-      fstab
-      vmlinuz
-      initrd
-      swap
-      tmp
-      cache
-      bak
-    description: List of common file extensions to exclude.
 
 sources:
 - query: |
@@ -169,38 +59,26 @@ sources:
                  then="x=>NOT x.OSPath =~ ExcludePathRegex",
                  else=""))
 
-    LET file_search = SELECT OSPath,
-               Sys.mft as Inode,
-               Mode.String AS Mode, Size,
-               Mtime AS MTime,
-               Atime AS ATime,
-               Ctime AS CTime,
-               IsDir, Mode, Data,
-               regex_replace(pattern=".*\\.", replace="", str=OSPath) AS Extension
+    LET file_search = SELECT OSPath, Sys.mft as Inode, Mode.String AS Mode, Size,
+               Mtime AS MTime, Atime AS ATime, Ctime AS CTime, IsDir, Mode, Data
         FROM glob(globs=SearchFilesGlobTable.Glob + SearchFilesGlob,
                   recursion_callback=RecursionCallback,
                   one_filesystem=OneFilesystem,
-                  accessor="file", nosymlink=DoNotFollowSymlinks)
-        WHERE Extension != OSPath AND NOT Extension IN CommonExtensions.Extension
-              AND Mode.IsRegular
+                  accessor="file",
+                  nosymlink=DoNotFollowSymlinks)
+        WHERE Mode.IsRegular
 
-    LET more_recent = SELECT * FROM if(
-        condition=MoreRecentThan,
-        then={ SELECT * FROM file_search WHERE MTime > MoreRecentThan },
-        else={ SELECT * FROM file_search })
+    LET binaries = SELECT OSPath, Inode, Mode, Size, ATime, MTime, CTime,
+               magic(path=OSPath, accessor="file") AS Magic
+        FROM file_search
+        WHERE Magic.mime_type =~ "application/x-executable|application/x-sharedlib|application/x-object|application/octet-stream"
 
-    LET modified_before = SELECT * FROM if(
-        condition=ModifiedBefore,
-        then={ SELECT * FROM more_recent WHERE MTime < ModifiedBefore },
-        else={ SELECT * FROM more_recent })
-
-    SELECT OSPath, Inode, Mode, Size, ATime,
-           MTime, CTime, Extension,
-           if(condition=Upload_File and Mode.IsRegular,
-              then=upload(file=OSPath, accessor="file")) AS Upload,
-           if(condition=Calculate_Hash and Mode.IsRegular,
-              then=hash(path=OSPath, accessor="file")) AS Hash
-    FROM modified_before
+    SELECT OSPath, Inode, Mode, Size, ATime, MTime, CTime, Magic.mime_type AS MimeType,
+        if(condition=Upload_File and Mode.IsRegular,
+           then=upload(file=OSPath, accessor="file")) AS Upload,
+        if(condition=Calculate_Hash and Mode.IsRegular,
+           then=hash(path=OSPath, accessor="file")) AS Hash
+    FROM binaries
 
 column_types:
   - name: ATime
