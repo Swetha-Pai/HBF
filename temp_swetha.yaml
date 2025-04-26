@@ -78,3 +78,86 @@ sources:
        130, -- sd
        131, -- sd
        132, -- sd
+       133, -- sd
+       134, -- sd
+       135, -- sd
+       202, -- xvd
+       253, -- device-mapper
+       254, -- mdp
+       259, -- blkext
+    )
+
+    LET RecursionCallback = if(
+       condition=LocalFilesystemOnly,
+         then=if(condition=ExcludePathRegex,
+                 then="x=>x.Data.DevMajor IN LocalDeviceMajor AND NOT x.OSPath =~ ExcludePathRegex",
+                 else="x=>x.Data.DevMajor IN LocalDeviceMajor"),
+         else=if(condition=ExcludePathRegex,
+                 then="x=>NOT x.OSPath =~ ExcludePathRegex",
+                 else=""))
+
+    LET file_search = SELECT OSPath,
+               Sys.mft as Inode,
+               Mode,
+               Size,
+               Mtime AS MTime,
+               Atime AS ATime,
+               Ctime AS CTime,
+               IsDir,
+               Data
+        FROM glob(globs=SearchFilesGlobTable.Glob + SearchFilesGlob,
+                  recursion_callback=RecursionCallback,
+                  one_filesystem=OneFilesystem,
+                  accessor="file", nosymlink=DoNotFollowSymlinks)
+
+    LET more_recent = SELECT * FROM if(
+        condition=MoreRecentThan,
+        then={
+          SELECT * FROM file_search
+          WHERE MTime > MoreRecentThan
+        }, else={
+          SELECT * FROM file_search
+        })
+
+    LET modified_before = SELECT * FROM if(
+        condition=ModifiedBefore,
+        then={
+          SELECT * FROM more_recent
+          WHERE MTime < ModifiedBefore
+            AND MTime > MoreRecentThan
+        }, else={
+          SELECT * FROM more_recent
+        })
+
+    -- Only regular files with any execute bit set (u/g/o)
+    LET executables_only = SELECT * FROM modified_before
+      WHERE (Mode & 61440) = 32768 AND (Mode & 73) != 0
+
+    LET keyword_search = SELECT * FROM if(
+        condition=YaraRule,
+        then={
+          SELECT * FROM foreach(
+            row={ SELECT * FROM executables_only },
+            query={
+               SELECT OSPath, Inode, Mode, Size, ATime, MTime, CTime,
+                      str(str=String.Data) As Keywords
+               FROM yara(files=OSPath, key="A", rules=YaraRule, accessor="file")
+            })
+        }, else={
+          SELECT *, NULL AS Keywords FROM executables_only
+        })
+
+    SELECT OSPath, Inode, Mode, Size, ATime, MTime, CTime, Keywords,
+           if(condition=Upload_File, then=upload(file=OSPath)) AS Upload,
+           if(condition=Calculate_Hash, then=hash(path=OSPath)) AS Hash
+    FROM keyword_search
+
+column_types:
+  - name: ATime
+    type: timestamp
+  - name: MTime
+    type: timestamp
+  - name: CTime
+    type: timestamp
+  - name: Upload
+    type: preview_upload
