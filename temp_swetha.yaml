@@ -1,7 +1,6 @@
 name: Custom.Linux.Search.FileFinder
 description: |
-  Find files on the filesystem using the filename or content.
-
+  Find .sh script files on the filesystem.
 
   ## Performance Note
 
@@ -29,21 +28,21 @@ description: |
     * We have a sample of data that has been disclosed and need to
       locate other similar files
 
-
 precondition:
   SELECT * FROM info() where OS = 'linux'
 
 parameters:
   - name: SearchFilesGlob
-    default: /home/*
-    description: Use a glob to define the files that will be searched.
+    default: /home/**/*.sh
+    description: Use a glob to define the .sh files that will be searched.
 
   - name: SearchFilesGlobTable
     type: csv
     default: |
       Glob
-      /home/someuser/*
-    description: Alternative specify multiple globs in a table
+      /usr/local/bin/*.sh
+      /usr/bin/*.sh
+    description: Alternative specify multiple globs in a table for shell scripts
 
   - name: YaraRule
     type: yara
@@ -138,6 +137,7 @@ sources:
                   recursion_callback=RecursionCallback,
                   one_filesystem=OneFilesystem,
                   accessor="file", nosymlink=DoNotFollowSymlinks)
+        WHERE OSPath =~ '.*\.sh$'
 
     LET more_recent = SELECT * FROM if(
         condition=MoreRecentThan,
