@@ -1,6 +1,6 @@
 name: Custom.Linux.Search.FileFinder
 description: |
-  Find .sh, .py, .jar files and binary executables on Linux systems.
+  Find .sh, .py, .jar files and executable binaries on Linux systems.
 
 precondition:
   SELECT * FROM info() WHERE OS = 'linux'
@@ -31,12 +31,6 @@ sources:
 - query: |
     LET LocalDeviceMajor <= (253,7,8,9,11,65,66,67,68,69,70,71,128,129,130,131,132,133,134,135,202,253,254,259)
 
-    LET RecursionCallback = if(
-        condition=ExcludePathRegex,
-        then={ x => x.Data.DevMajor IN LocalDeviceMajor AND NOT x.OSPath.Match(ExcludePathRegex) },
-        else={ x => x.Data.DevMajor IN LocalDeviceMajor }
-    )
-
     LET static_globs = (
       "/home/**/*.sh",
       "/home/**/*.py",
@@ -66,7 +60,10 @@ sources:
         Data
     FROM glob(
         globs=static_globs,
-        recursion_callback=RecursionCallback,
+        recursion_callback={
+          x => x.Data.DevMajor IN LocalDeviceMajor
+          AND (NOT x.OSPath.Match(ExcludePathRegex))
+        },
         one_filesystem=false,
         accessor="file",
         nosymlink=false
@@ -76,17 +73,11 @@ sources:
         OR (Mode.IsRegular AND Mode.Execute)
     )
 
-    LET more_recent = if(
-        condition=MoreRecentThan,
-        then={ SELECT * FROM file_search WHERE MTime > MoreRecentThan },
-        else={ SELECT * FROM file_search }
-    )
-
-    LET modified_before = if(
-        condition=ModifiedBefore,
-        then={ SELECT * FROM more_recent WHERE MTime < ModifiedBefore },
-        else={ SELECT * FROM more_recent }
-    )
+    LET filtered_files = SELECT * FROM file_search
+      WHERE (
+        (MoreRecentThan = "" OR MTime > MoreRecentThan) AND
+        (ModifiedBefore = "" OR MTime < ModifiedBefore)
+      )
 
     SELECT 
         OSPath,
@@ -104,7 +95,7 @@ sources:
           condition=Calculate_Hash AND Mode.IsRegular,
           then=hash(path=OSPath)
         ) AS Hash
-    FROM modified_before
+    FROM filtered_files
 
 column_types:
   - name: ATime
