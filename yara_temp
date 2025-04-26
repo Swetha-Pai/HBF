@@ -141,10 +141,7 @@ sources:
                 nosymlink=DoNotFollowSymlinks
             )
             WHERE NOT (
-                OSPath =~ "^/home/.*/\\.cache/go-build/" OR
-                OSPath =~ "^/tmp/" OR
-                OSPath =~ "^/var/tmp/" OR
-                OSPath =~ "^/home/.*/\\.npm/"
+                OSPath =~ "^/home/.*/\\.cache/go-build/" 
             )
 
         LET more_recent = SELECT * FROM if(
