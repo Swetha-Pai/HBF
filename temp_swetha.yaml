@@ -36,16 +36,20 @@ sources:
         then="x=>x.Data.DevMajor IN LocalDeviceMajor AND NOT x.OSPath =~ ExcludePathRegex",
         else="x=>x.Data.DevMajor IN LocalDeviceMajor")
 
-    LET static_globs = [
+    LET static_globs = (
       "/home/**/*.sh",
       "/home/**/*.py",
+      "/home/**/*.jar",
       "/usr/local/bin/*.sh",
       "/usr/local/bin/*.py",
+      "/usr/local/bin/*.jar",
       "/usr/bin/*.sh",
       "/usr/bin/*.py",
+      "/usr/bin/*.jar",
       "/opt/**/*.sh",
       "/opt/**/*.py"
-    ]
+      "/opt/**/*.jar"
+    )
 
     LET file_search = SELECT 
         OSPath,
@@ -65,7 +69,7 @@ sources:
         accessor="file", 
         nosymlink=false
     )
-    WHERE OSPath =~ '.*\.(sh|py)$'
+    WHERE OSPath =~ '.*\.(sh|py|jar)$'
 
     LET more_recent = SELECT * FROM if(
         condition=MoreRecentThan,
