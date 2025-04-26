@@ -22,7 +22,7 @@ sources:
         row=history_files,
         query={
           LET download_url = regex_search(
-            source=Line,
+            source=row.Line,
             regex="(https?://\\S+)",
             group=0
           )
@@ -33,21 +33,21 @@ sources:
           )
           
           SELECT
-            OSPath AS CurrentFilePath,
-            Mtime,
-            Username,
-            Line AS FullCommand,
+            row.OSPath AS CurrentFilePath,
+            row.Mtime,
+            row.Username,
+            row.Line AS FullCommand,
             if(
-              condition=Line =~ "(wget|curl)\\s+.*https?://",
+              condition=row.Line =~ "(wget|curl)\\s+.*https?://",
               then=regex_replace(
-                source=Line,
+                source=row.Line,
                 re=".*(wget|curl)\\b.*",
                 replace="$1"
               )
             ) AS DownloadTool,
             download_url AS DownloadURL,
             downloaded_filename AS DownloadedFilename
-          FROM parse_lines(filename=OSPath, accessor="auto")
+          FROM parse_lines(filename=row.OSPath, accessor="auto")
           WHERE DownloadTool
         }
       )
