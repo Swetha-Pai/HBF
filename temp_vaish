@@ -1,34 +1,18 @@
 name: Custom.Linux.Search.FileFinder
 description: |
-  Find files on the filesystem using the filename or content.
-
+  Find files on the filesystem using the filename or content. This version has been customized to find files with non-standard extensions.
 
   ## Performance Note
 
-  This artifact can be quite expensive, especially if we search file
-  content. It will require opening each file and reading its entire
-  content. To minimize the impact on the endpoint we recommend this
-  artifact is collected with a rate limited way (about 20-50 ops per
-  second).
+  This artifact can be quite expensive, especially if we search file content. It will require opening each file and reading its entire content. To minimize the impact on the endpoint we recommend this artifact is collected with a rate-limited way (about 20-50 ops per second).
 
   This artifact is useful in the following scenarios:
 
-    * We need to locate all the places on our network where customer
-      data has been copied.
-
-    * We’ve identified malware in a data breach, named using short
-      random strings in specific folders and need to search for other
-      instances across the network.
-
-    * We believe our user account credentials have been dumped and
-      need to locate them.
-
-    * We need to search for exposed credit card data to satisfy PCI
-      requirements.
-
-    * We have a sample of data that has been disclosed and need to
-      locate other similar files
-
+    * We need to locate all the places on our network where customer data has been copied.
+    * We’ve identified malware in a data breach, named using short random strings in specific folders, and need to search for other instances across the network.
+    * We believe our user account credentials have been dumped and need to locate them.
+    * We need to search for exposed credit card data to satisfy PCI requirements.
+    * We have a sample of data that has been disclosed and need to locate other similar files.
 
 precondition:
   SELECT * FROM info() where OS = 'linux'
@@ -42,12 +26,12 @@ parameters:
     type: csv
     default: |
       Glob
-      /home/someuser/*
-    description: Alternative specify multiple globs in a table
+      /**  -- Recursive glob to search all directories
+    description: Alternative specify multiple globs in a table.
 
   - name: YaraRule
     type: yara
-    default:
+    default: ""
     description: A yara rule to search for matching files.
 
   - name: Upload_File
@@ -74,48 +58,22 @@ parameters:
   - name: LocalFilesystemOnly
     default: Y
     type: bool
-    description: When set we stay on local attached filesystems including loop, attached disk, cdrom, device mapper, and excluding proc, nfs etc.
+    description: When set, we stay on local attached filesystems including loop, attached disk, cdrom, device mapper, and excluding proc, nfs, etc.
 
   - name: OneFilesystem
     default: N
     type: bool
-    description: When set we do not follow a link to go on to a different filesystem.
+    description: When set, we do not follow a link to go on to a different filesystem.
 
   - name: DoNotFollowSymlinks
     type: bool
     default: N
-    description: If specified we are allowed to follow symlinks while globbing
+    description: If specified, we are allowed to follow symlinks while globbing.
 
 sources:
 - query: |
-    -- This list comes from cat /proc/devices and represents actual
-    -- devices. Most virtual devices like /proc, fuse and network
-    -- filesystems have a major number of 0.
     LET LocalDeviceMajor <= (
-       253,
-       7,   -- loop
-       8,   -- sd
-       9,   -- md
-       11,  -- sr
-       65,  -- sd
-       66,  -- sd
-       67,  -- sd
-       68,  -- sd
-       69,  -- sd
-       70,  -- sd
-       71,  -- sd
-       128, -- sd
-       129, -- sd
-       130, -- sd
-       131, -- sd
-       132, -- sd
-       133, -- sd
-       134, -- sd
-       135, -- sd
-       202, -- xvd
-       253, -- device-mapper
-       254, -- mdp
-       259, -- blkext
+       253, 7, 8, 9, 11, 65, 66, 67, 68, 69, 70, 71, 128, 129, 130, 131, 132, 133, 134, 135, 202, 253, 254, 259
     )
 
     LET RecursionCallback = if(
@@ -127,13 +85,7 @@ sources:
                  then="x=>NOT x.OSPath =~ ExcludePathRegex",
                  else=""))
 
-    LET file_search = SELECT OSPath,
-               Sys.mft as Inode,
-               Mode.String AS Mode, Size,
-               Mtime AS MTime,
-               Atime AS ATime,
-               Ctime AS CTime,
-               IsDir, Mode, Data
+    LET file_search = SELECT OSPath, Sys.mft as Inode, Mode.String AS Mode, Size, Mtime AS MTime, Atime AS ATime, Ctime AS CTime, IsDir, Mode, Data
         FROM glob(globs=SearchFilesGlobTable.Glob + SearchFilesGlob,
                   recursion_callback=RecursionCallback,
                   one_filesystem=OneFilesystem,
@@ -141,53 +93,33 @@ sources:
 
     LET more_recent = SELECT * FROM if(
         condition=MoreRecentThan,
-        then={
-          SELECT * FROM file_search
-          WHERE MTime > MoreRecentThan
-        }, else={
-          SELECT * FROM file_search
-        })
+        then={SELECT * FROM file_search WHERE MTime > MoreRecentThan},
+        else={SELECT * FROM file_search})
 
     LET modified_before = SELECT * FROM if(
         condition=ModifiedBefore,
-        then={
-          SELECT * FROM more_recent
-          WHERE MTime < ModifiedBefore
-            AND MTime > MoreRecentThan
-        }, else={
-          SELECT * FROM more_recent
-        })
+        then={SELECT * FROM more_recent WHERE MTime < ModifiedBefore AND MTime > MoreRecentThan},
+        else={SELECT * FROM more_recent})
+
+    -- Filter files with non-standard extensions
+    LET non_standard_files = SELECT * FROM modified_before WHERE NOT Mode.IsDir AND NOT Extension IN (
+        'txt', 'jpg', 'jpeg', 'png', 'pdf', 'docx', 'xlsx', 'csv', 'html', 'zip', 'tar', 'gz', 'mp4', 'mp3', 'exe', 'dll', 'bat', 'sh', 'py'
+    )
 
     LET keyword_search = SELECT * FROM if(
         condition=YaraRule,
-        then={
-          SELECT * FROM foreach(
-            row={
-               SELECT * FROM modified_before
-               WHERE Mode.IsRegular
-            },
-            query={
-               SELECT OSPath, Inode, Mode,
-                      Size, ATime, MTime, CTime,
-                      str(str=String.Data) As Keywords
+        then={SELECT * FROM foreach(row={SELECT * FROM non_standard_files WHERE Mode.IsRegular},
+                                   query={
+                                       SELECT OSPath, Inode, Mode, Size, ATime, MTime, CTime, str(str=String.Data) As Keywords
+                                       FROM yara(files=OSPath, key="A", rules=YaraRule, accessor="file")
+                                   })}
+        else={SELECT *, NULL AS Keywords FROM non_standard_files}
 
-               FROM yara(files=OSPath,
-                         key="A",
-                         rules=YaraRule,
-                         accessor="file")
-            })
-        }, else={
-          SELECT *, NULL AS Keywords FROM modified_before
-        })
-
-    SELECT OSPath, Inode, Mode, Size, ATime,
-             MTime, CTime, Keywords,
-               if(condition=Upload_File and Mode.IsRegular,
-                  then=upload(file=OSPath,
-                              accessor="file")) AS Upload,
-               if(condition=Calculate_Hash and Mode.IsRegular,
-                  then=hash(path=OSPath,
-                            accessor="file")) AS Hash
+    SELECT OSPath, Inode, Mode, Size, ATime, MTime, CTime, Keywords,
+           if(condition=Upload_File and Mode.IsRegular,
+              then=upload(file=OSPath, accessor="file")) AS Upload,
+           if(condition=Calculate_Hash and Mode.IsRegular,
+              then=hash(path=OSPath, accessor="file")) AS Hash
     FROM keyword_search
 
 column_types:
