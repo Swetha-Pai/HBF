@@ -1,9 +1,8 @@
 name: Custom.Detection.CommandLineDownloads
 description: |
   Detects wget/curl downloads with or without explicit output flags,
-  including indirect file operations.
-  Extracts the download tool used, the URL, the downloaded filename,
-  and the full path to the history file where the command was found.
+  including indirect file operations, and reports the downloaded
+  filename and its resolved location on disk.
 
 parameters:
   - name: HistoryPaths
@@ -18,34 +17,46 @@ sources:
         FROM glob(globs=split(string=HistoryPaths, sep="\n"))
         WHERE Size > 0
 
-      SELECT 
-        history_files.OSPath AS CurrentFilePath,
-        history_files.Mtime,
-        history_files.Username,
-        line AS FullCommand,
-        if(
-          condition=line =~ "(wget|curl)\\s+.*https?://",
-          then=regex_replace(
-            source=line,
-            re=".*(wget|curl)\\b.*",
-            replace="$1"
-          )
-        ) AS DownloadTool,
-        regex_search(source=line, regex="(https?://\\S+)", group=0) AS DownloadURL,
-        if(
-          condition=regex_search(source=line, regex="(https?://\\S+)", group=0),
-          then=basename(regex_search(source=line, regex="(https?://\\S+)", group=0)),
-          else=null()
-        ) AS DownloadedFilename
-      FROM foreach(
-        row=history_files,
-        query={
-          SELECT
-            row.OSPath,
-            row.Mtime,
-            row.Username,
-            row.Line
-          FROM parse_lines(filename=row.OSPath, accessor="auto")
-          WHERE row.Line =~ "(wget|curl)\\s+.*https?://"
-        }
-      )
+      SELECT *
+        FROM foreach(
+          row=history_files,
+          query={
+            SELECT
+              OSPath,
+              Mtime,
+              Username,
+              Line AS FullCommand,
+              if(
+                condition = Line =~ "(wget|curl)\\s+.*https?://",
+                then      = regex_replace(source=Line, re=".*(wget|curl)\\b.*", replace="$1")
+              ) AS DownloadTool,
+              regex_search(Line, "(https?://[^\\s'\"]+)") AS DownloadURL,
+              if(
+                condition = Line =~ "(?:-O|--output|--output-document)\\s+([^\\s]+)",
+                then      = regex_search(Line, "(?:-O|--output|--output-document)\\s+([^\\s]+)"),
+                else      = regex_replace(
+                              source = regex_search(Line, "(https?://[^\\s'\"]+)"),
+                              re     = ".*/([^/?#]+).*",
+                              replace= "\\1"
+                            )
+              ) AS OutputFile,
+              (
+                SELECT path
+                  FROM file
+                 WHERE name = (
+                   if(
+                     Line =~ "(?:-O|--output|--output-document)\\s+([^\\s]+)",
+                     regex_search(Line, "(?:-O|--output|--output-document)\\s+([^\\s]+)"),
+                     regex_replace(
+                       source = regex_search(Line, "(https?://[^\\s'\"]+)"),
+                       re     = ".*/([^/?#]+).*",
+                       replace= "\\1"
+                     )
+                   )
+                 )
+                 LIMIT 1
+              ) AS FilePath
+            FROM parse_lines(filename=OSPath, accessor="auto")
+           WHERE Line =~ "(wget|curl)\\s+.*https?://"
+          }
+        )
