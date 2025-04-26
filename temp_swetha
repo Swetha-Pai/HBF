@@ -1,7 +1,6 @@
 name: Custom.Linux.Search.FileFinder
 description: |
-  Find files on the filesystem using the filename or content.
-
+  Find executable files on the filesystem using the filename or content.
 
   ## Performance Note
 
@@ -28,7 +27,6 @@ description: |
 
     * We have a sample of data that has been disclosed and need to
       locate other similar files
-
 
 precondition:
   SELECT * FROM info() where OS = 'linux'
@@ -155,47 +153,4 @@ sources:
           WHERE MTime < ModifiedBefore
             AND MTime > MoreRecentThan
         }, else={
-          SELECT * FROM more_recent
-        })
-
-    LET keyword_search = SELECT * FROM if(
-        condition=YaraRule,
-        then={
-          SELECT * FROM foreach(
-            row={
-               SELECT * FROM modified_before
-               WHERE Mode.IsRegular
-            },
-            query={
-               SELECT OSPath, Inode, Mode,
-                      Size, ATime, MTime, CTime,
-                      str(str=String.Data) As Keywords
-
-               FROM yara(files=OSPath,
-                         key="A",
-                         rules=YaraRule,
-                         accessor="file")
-            })
-        }, else={
-          SELECT *, NULL AS Keywords FROM modified_before
-        })
-
-    SELECT OSPath, Inode, Mode, Size, ATime,
-             MTime, CTime, Keywords,
-               if(condition=Upload_File and Mode.IsRegular,
-                  then=upload(file=OSPath,
-                              accessor="file")) AS Upload,
-               if(condition=Calculate_Hash and Mode.IsRegular,
-                  then=hash(path=OSPath,
-                            accessor="file")) AS Hash
-    FROM keyword_search
-
-column_types:
-  - name: ATime
-    type: timestamp
-  - name: MTime
-    type: timestamp
-  - name: CTime
-    type: timestamp
-  - name: Upload
-    type: preview_upload
+          SELECT * FROM
