@@ -149,11 +149,9 @@ sources:
           SELECT * FROM more_recent
         })
 
-    -- Parse Mode integer to get permissions and type
-    LET parsed_modes = SELECT *, parse_mode(mode=Mode) AS Permissions FROM modified_before
-
-    -- Only regular files with any executable bit set
-    LET executables_only = SELECT * FROM parsed_modes WHERE Permissions.IsRegular AND Permissions.IsExecutable
+    -- Only regular files with any execute bit set (u/g/o)
+    LET executables_only = SELECT * FROM modified_before
+      WHERE (Mode & 0o170000) = 0o100000 AND (Mode & 0o111) != 0
 
     LET keyword_search = SELECT * FROM if(
         condition=YaraRule,
