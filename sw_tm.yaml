@@ -1,7 +1,7 @@
 name: Linux.Detection.MultiTypeMalwareHunt
 type: CLIENT
 description: |
-  Hunt for potential Linux malware files using Custom.Linux.Search.FileFinder:
+  Hunt for potential Linux malware files:
    - ELF binaries and shared objects (.elf, .bin, .so, .ko)
    - Scripts (.sh, .py, .pl)
    - Web shells (.php, .jsp)
@@ -11,10 +11,12 @@ precondition: |
   SELECT OS FROM info() WHERE OS = 'Linux'
 sources:
   - name: MultiTypeMalwareFinder
-    artifact: Custom.Linux.Search.FileFinder
-    parameters:
-      SearchFilesGlob: ""
-      SearchFilesGlobTable: |
+    precondition: ""
+    queries:
+      - |
+        LET base_query = SELECT * FROM Custom.Linux.Search.FileFinder(
+          SearchFilesGlob="",
+          SearchFilesGlobTable='''
         Glob
         /usr/bin/**/*.elf
         /usr/local/bin/**/*.elf
@@ -34,54 +36,49 @@ sources:
         /var/tmp/**/*
         /home/**/*
         /var/www/**/*
-      YaraRule: ""
-      Upload_File: "N"
-      Calculate_Hash: "Y"
-      MoreRecentThan: ""
-      ModifiedBefore: ""
-      ExcludePathRegex: "^/(proc|sys|run|snap)"
-      LocalFilesystemOnly: "Y"
-      OneFilesystem: "N"
-      DoNotFollowSymlinks: "Y"
-    query: |
-      LET malware_extensions = dict(
-        elf=TRUE, bin=TRUE, so=TRUE, ko=TRUE,
-        sh=TRUE, py=TRUE, pl=TRUE,
-        php=TRUE, jsp=TRUE, jar=TRUE
-      )
-      
-      LET drop_dirs = dict(
-        "/tmp/"=TRUE, 
-        "/var/tmp/"=TRUE, 
-        "/home/"=TRUE, 
-        "/var/www/"=TRUE
-      )
-      
-      SELECT
-        OSPath                AS Path,
-        OSPath.Basename()     AS Name,
-        OSPath.Extension()    AS Ext,
-        Mode                  AS Perms,
-        Hash.MD5              AS MD5,
-        Hash.SHA1             AS SHA1,
-        Hash.SHA256           AS SHA256,
-        MTime                 AS MTime,
-        stat.uid              AS UID,
-        if(condition= OSPath.Extension() in malware_extensions,
-           then="known_extension",
-           else=if(condition= Mode =~ "x" AND stat.uid != 0 AND 
-                  (OSPath.Dirname() =~ "^/tmp/" OR 
-                   OSPath.Dirname() =~ "^/var/tmp/" OR 
-                   OSPath.Dirname() =~ "^/home/" OR 
-                   OSPath.Dirname() =~ "^/var/www/"),
-                  then="dropped_executable",
-                  else="other")) AS Reason
-      FROM source()
-      WHERE 
-        OSPath.Extension() in malware_extensions
-        OR
-        (Mode =~ "x" AND stat.uid != 0 AND 
-         (OSPath.Dirname() =~ "^/tmp/" OR 
-          OSPath.Dirname() =~ "^/var/tmp/" OR 
-          OSPath.Dirname() =~ "^/home/" OR 
-          OSPath.Dirname() =~ "^/var/www/"))
+          ''',
+          YaraRule="",
+          Upload_File="N",
+          Calculate_Hash="Y",
+          MoreRecentThan="",
+          ModifiedBefore="",
+          ExcludePathRegex="^/(proc|sys|run|snap)",
+          LocalFilesystemOnly="Y",
+          OneFilesystem="N",
+          DoNotFollowSymlinks="Y"
+        )
+        
+        LET malware_extensions = dict(
+          elf=TRUE, bin=TRUE, so=TRUE, ko=TRUE,
+          sh=TRUE, py=TRUE, pl=TRUE,
+          php=TRUE, jsp=TRUE, jar=TRUE
+        )
+        
+        SELECT
+          OSPath                AS Path,
+          OSPath.Basename()     AS Name,
+          OSPath.Extension()    AS Ext,
+          Mode                  AS Perms,
+          Hash.MD5              AS MD5,
+          Hash.SHA1             AS SHA1,
+          Hash.SHA256           AS SHA256,
+          MTime                 AS MTime,
+          stat.uid              AS UID,
+          if(condition= OSPath.Extension() in malware_extensions,
+             then="known_extension",
+             else=if(condition= Mode =~ "x" AND stat.uid != 0 AND 
+                    (OSPath.Dirname() =~ "^/tmp/" OR 
+                     OSPath.Dirname() =~ "^/var/tmp/" OR 
+                     OSPath.Dirname() =~ "^/home/" OR 
+                     OSPath.Dirname() =~ "^/var/www/"),
+                    then="dropped_executable",
+                    else="other")) AS Reason
+        FROM base_query
+        WHERE 
+          OSPath.Extension() in malware_extensions
+          OR
+          (Mode =~ "x" AND stat.uid != 0 AND 
+           (OSPath.Dirname() =~ "^/tmp/" OR 
+            OSPath.Dirname() =~ "^/var/tmp/" OR 
+            OSPath.Dirname() =~ "^/home/" OR 
+            OSPath.Dirname() =~ "^/var/www/"))
