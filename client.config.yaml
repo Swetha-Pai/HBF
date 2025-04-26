@@ -1,1 +1,0 @@
-'/etc/velociraptor/server.config.yaml' is not readable, you will need to run this as the velociraptor user ('sudo -u velociraptor bash').
