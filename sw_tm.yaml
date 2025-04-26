@@ -33,8 +33,8 @@ sources:
 
     LET RecursionCallback = if(
         condition=ExcludePathRegex,
-        then={x => x.Data.DevMajor IN LocalDeviceMajor AND NOT x.OSPath.Match(ExcludePathRegex)},
-        else={x => x.Data.DevMajor IN LocalDeviceMajor}
+        then={ x => x.Data.DevMajor IN LocalDeviceMajor AND NOT x.OSPath.Match(ExcludePathRegex) },
+        else={ x => x.Data.DevMajor IN LocalDeviceMajor }
     )
 
     LET static_globs = (
@@ -56,7 +56,7 @@ sources:
     LET file_search = SELECT 
         OSPath,
         Sys.mft AS Inode,
-        Mode.String AS Mode,
+        Mode.String AS ModeString,
         Size,
         Mtime AS MTime,
         Atime AS ATime,
@@ -72,33 +72,38 @@ sources:
         nosymlink=false
     )
     WHERE (
-        OSPath.Match('\.(sh|py|jar)$') OR (Mode.IsRegular AND Mode.Execute)
+        OSPath.Match(r'.*\.(sh|py|jar)$')
+        OR (Mode.IsRegular AND Mode.Execute)
     )
 
-    LET more_recent = SELECT * FROM if(
+    LET more_recent = if(
         condition=MoreRecentThan,
         then={ SELECT * FROM file_search WHERE MTime > MoreRecentThan },
-        else=file_search
+        else={ SELECT * FROM file_search }
     )
 
-    LET modified_before = SELECT * FROM if(
+    LET modified_before = if(
         condition=ModifiedBefore,
         then={ SELECT * FROM more_recent WHERE MTime < ModifiedBefore },
-        else=more_recent
+        else={ SELECT * FROM more_recent }
     )
 
     SELECT 
         OSPath,
         Inode,
-        Mode,
+        ModeString AS Mode,
         Size,
         ATime,
         MTime,
         CTime,
-        if(condition=Upload_File AND Mode.IsRegular,
-            then=upload(file=OSPath)) AS Upload,
-        if(condition=Calculate_Hash AND Mode.IsRegular,
-            then=hash(path=OSPath)) AS Hash
+        if(
+          condition=Upload_File AND Mode.IsRegular,
+          then=upload(file=OSPath)
+        ) AS Upload,
+        if(
+          condition=Calculate_Hash AND Mode.IsRegular,
+          then=hash(path=OSPath)
+        ) AS Hash
     FROM modified_before
 
 column_types:
