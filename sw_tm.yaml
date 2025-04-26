@@ -21,8 +21,19 @@ sources:
       SELECT * FROM foreach(
         row=history_files,
         query={
+          LET download_url = regex_search(
+            source=Line,
+            regex="(https?://\\S+)",
+            group=0
+          )
+          LET downloaded_filename = if(
+            condition=download_url,
+            then=basename(download_url),
+            else=null()
+          )
+          
           SELECT
-            OSPath AS CurrentFilePath,  # <--- Renamed for clarity
+            OSPath AS CurrentFilePath,
             Mtime,
             Username,
             Line AS FullCommand,
@@ -34,16 +45,8 @@ sources:
                 replace="$1"
               )
             ) AS DownloadTool,
-            regex_search(
-              source=Line,
-              regex="(https?://\\S+)",
-              group=0
-            ) AS DownloadURL,
-            if(
-              condition=DownloadURL,
-              then=basename(DownloadURL),
-              else=null()
-            ) AS DownloadedFilename
+            download_url AS DownloadURL,
+            downloaded_filename AS DownloadedFilename
           FROM parse_lines(filename=OSPath, accessor="auto")
           WHERE DownloadTool
         }
