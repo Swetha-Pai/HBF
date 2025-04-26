@@ -24,25 +24,30 @@ sources:
             Mtime,
             Username,
             Line AS FullCommand,
+
+            # Extract wget or curl
             regex_replace(
               source=Line,
-              re=".*(wget|curl)\\b.*",
+              re=".*\\b(wget|curl)\\b.*",
               replace="$1"
             ) AS DownloadTool,
+
+            # Filename: prefer -O/--output, else last URL segment
             if(
-              condition=Line =~ "(?:-O|--output(?:-document)?)[ =]+([\\w.\\-/\\\\]+)",
-              then=regex_search(
+              condition=Line =~ "(?:-O|--output(?:-document)?)[ =]+[\\w.\\-/\\\\]+",
+              then=regex_replace(
                 source=Line,
-                re="(?:-O|--output(?:-document)?)[ =]+([\\w.\\-/\\\\]+)",
-                index=1
+                re=".*(?:-O|--output(?:-document)?)[ =]+([\\w.\\-/\\\\]+).*",
+                replace="$1"
               ),
-              else=regex_search(
+              else=regex_replace(
                 source=Line,
-                re="https?://[^\\s]+/([^\\s/]+)(?:\\s|$)",
-                index=1
+                re=".*https?://[^\\s]+/([^\\s/]+)(?:\\s|$).*",
+                replace="$1"
               )
             ) AS Filename
+
           FROM parse_lines(filename=OSPath, accessor="auto")
-          WHERE DownloadTool
+          WHERE Line =~ "\\b(wget|curl)\\b" AND Line =~ "https?://"
         }
       )
